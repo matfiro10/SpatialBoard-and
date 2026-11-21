@@ -37,7 +37,7 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.spatialboard.R
-import com.example.spatialboard.ui.theme.SpatialBoardTheme
+import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 
 val navCapsuleButtons = listOf(
     NavCapsuleButton(R.string.nav_boards, Icons.Rounded.ViewCarousel),

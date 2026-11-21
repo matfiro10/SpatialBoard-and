@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="permissions_title">Wymagane uprawnienia</string>
+    <string name="permissions_subtitle">Aby wyświetlać boardy AR w przestrzeni i wykrywać pobliskie stanowiska, aplikacja potrzebuje dostępu do:</string>
+    <string name="permissions_camera_title">Kamera</string>
+    <string name="permissions_camera_desc">Śledzenie przestrzeni i osadzanie boardów 3D w widoku AR.</string>
+    <string name="permissions_ble_title">Bluetooth (BLE)</string>
+    <string name="permissions_ble_desc">Wykrywanie beaconów przypisanych do sal i stanowisk.</string>
+    <string name="permissions_location_title">Lokalizacja</string>
+    <string name="permissions_location_desc">Wymagana przez system Android do skanowania sygnałów BLE w otoczeniu.</string>
+    <string name="permissions_action_grant">Nadaj uprawnienia</string>
+    <string name="permissions_action_settings">Otwórz ustawienia aplikacji</string>
+</resources>
