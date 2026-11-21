@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nav_boards">Boardy</string>
+    <string name="nav_add">Dodaj</string>
+    <string name="nav_beacons">Beacony</string>
+    <string name="nav_settings">Ustawienia</string>
+</resources>
