@@ -25,6 +25,13 @@ object AppPermissions {
             }
         }.toTypedArray()
 
+    fun hasCameraPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+    }
+
     fun hasAllPermissions(context: Context): Boolean {
         return requiredPermissions.all { permission ->
             ContextCompat.checkSelfPermission(

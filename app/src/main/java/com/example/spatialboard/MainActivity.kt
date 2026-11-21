@@ -9,27 +9,29 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -41,9 +43,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.example.spatialboard.camera.ArCameraView
 import com.example.spatialboard.permissions.AppPermissions
 import com.example.spatialboard.permissions.PermissionWindow
+import com.example.spatialboard.ui.ActiveOverlay
 import com.example.spatialboard.ui.NavigationCapsule
+import com.example.spatialboard.ui.OverlayWindow
 import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 
 class MainActivity : ComponentActivity() {
@@ -68,6 +73,9 @@ fun SpatialBoardTestScreen() {
     val lifecycleOwner = LocalLifecycleOwner.current
 
     var selectedTabResId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var hasCameraPermission by rememberSaveable {
+        mutableStateOf(AppPermissions.hasCameraPermission(context))
+    }
     var hasAllPermissions by rememberSaveable {
         mutableStateOf(AppPermissions.hasAllPermissions(context))
     }
@@ -77,6 +85,7 @@ fun SpatialBoardTestScreen() {
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestMultiplePermissions()
     ) {
+        hasCameraPermission = AppPermissions.hasCameraPermission(context)
         hasAllPermissions = AppPermissions.hasAllPermissions(context)
         hasRequestedOnce = true
         isPermanentlyDenied = !hasAllPermissions && AppPermissions.isPermanentlyDenied(context)
@@ -85,6 +94,7 @@ fun SpatialBoardTestScreen() {
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
+                hasCameraPermission = AppPermissions.hasCameraPermission(context)
                 hasAllPermissions = AppPermissions.hasAllPermissions(context)
                 if (hasAllPermissions) {
                     isPermanentlyDenied = false
@@ -103,14 +113,18 @@ fun SpatialBoardTestScreen() {
         }
     }
 
-    BackHandler(enabled = selectedTabResId != null) {
+    val activeOverlay = selectedTabResId?.let { ActiveOverlay.NavigationCard(it) }
+        ?: if (!hasAllPermissions && hasRequestedOnce) ActiveOverlay.Permissions else ActiveOverlay.None
+
+    val isDismissible = activeOverlay is ActiveOverlay.NavigationCard
+
+    BackHandler(enabled = isDismissible) {
         selectedTabResId = null
     }
 
-    val showPermissionWindow = !hasAllPermissions && hasRequestedOnce && selectedTabResId == null
-
     val scrimAlpha by animateFloatAsState(
-        targetValue = if (selectedTabResId != null || showPermissionWindow) 0.55f else 0f,
+        targetValue = if (activeOverlay != ActiveOverlay.None) 0.86f else 0f,
+        animationSpec = tween(durationMillis = 250),
         label = "scrimAlpha"
     )
 
@@ -119,57 +133,65 @@ fun SpatialBoardTestScreen() {
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.surfaceContainerLowest)
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.scrim.copy(alpha = scrimAlpha))
-        )
-
-        AnimatedVisibility(
-            visible = showPermissionWindow,
-            enter = fadeIn() + scaleIn(initialScale = 0.94f),
-            exit = fadeOut() + scaleOut(targetScale = 0.94f),
-            modifier = Modifier
-                .align(Alignment.Center)
-                .safeDrawingPadding()
-                .padding(24.dp)
-        ) {
-            PermissionWindow(
-                isPermanentlyDenied = isPermanentlyDenied,
-                onRequestPermissions = {
-                    permissionLauncher.launch(AppPermissions.requiredPermissions)
-                },
-                onOpenSettings = {
-                    AppPermissions.openAppSettings(context)
-                }
+        if (hasCameraPermission) {
+            ArCameraView(
+                modifier = Modifier.fillMaxSize(),
+                planeRenderer = false
             )
         }
 
-        AnimatedVisibility(
-            visible = selectedTabResId != null,
-            enter = fadeIn() + scaleIn(initialScale = 0.94f),
-            exit = fadeOut() + scaleOut(targetScale = 0.94f),
+        val scrimModifier = if (activeOverlay != ActiveOverlay.None) {
+            Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.scrim.copy(alpha = scrimAlpha))
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    enabled = isDismissible
+                ) {
+                    selectedTabResId = null
+                }
+        } else {
+            Modifier.fillMaxSize()
+        }
+
+        Box(modifier = scrimModifier)
+
+        AnimatedContent(
+            targetState = activeOverlay,
+            transitionSpec = {
+                (fadeIn() + scaleIn(initialScale = 0.94f))
+                    .togetherWith(fadeOut() + scaleOut(targetScale = 0.94f))
+            },
+            contentAlignment = Alignment.Center,
             modifier = Modifier
                 .align(Alignment.Center)
-                .padding(24.dp)
-        ) {
-            selectedTabResId?.let { resId ->
-                Surface(
-                    shape = RoundedCornerShape(28.dp),
-                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.94f),
-                    border = BorderStroke(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
-                    ),
-                    tonalElevation = 6.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    Text(
-                        text = stringResource(resId),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        style = MaterialTheme.typography.headlineSmall,
-                        modifier = Modifier.padding(horizontal = 32.dp, vertical = 24.dp)
+                .safeDrawingPadding()
+                .padding(24.dp),
+            label = "overlayContent"
+        ) { overlay ->
+            when (overlay) {
+                ActiveOverlay.None -> Unit
+                ActiveOverlay.Permissions -> {
+                    PermissionWindow(
+                        isPermanentlyDenied = isPermanentlyDenied,
+                        onRequestPermissions = {
+                            permissionLauncher.launch(AppPermissions.requiredPermissions)
+                        },
+                        onOpenSettings = {
+                            AppPermissions.openAppSettings(context)
+                        }
                     )
+                }
+                is ActiveOverlay.NavigationCard -> {
+                    OverlayWindow {
+                        Text(
+                            text = stringResource(overlay.titleResId),
+                            color = MaterialTheme.colorScheme.onSurface,
+                            style = MaterialTheme.typography.headlineSmall,
+                            modifier = Modifier.padding(horizontal = 32.dp, vertical = 24.dp)
+                        )
+                    }
                 }
             }
         }

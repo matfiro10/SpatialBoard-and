@@ -88,10 +88,10 @@ fun NavigationCapsule(
         Surface(
             modifier = capsuleSizeModifier,
             shape = CircleShape,
-            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.88f),
+            color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.92f),
             border = BorderStroke(
                 width = 1.dp,
-                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.45f)
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
             ),
             tonalElevation = 4.dp,
             shadowElevation = 8.dp
