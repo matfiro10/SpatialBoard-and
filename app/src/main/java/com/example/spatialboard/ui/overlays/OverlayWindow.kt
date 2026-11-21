@@ -1,5 +1,6 @@
 package com.example.spatialboard.ui.overlays
 
+import android.content.res.Configuration
 import androidx.annotation.StringRes
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -27,6 +29,7 @@ import androidx.compose.runtime.saveable.listSaver
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.paneTitle
@@ -46,14 +49,24 @@ sealed interface ActiveOverlay {
         override val parentTabResId: Int = titleResId
     }
 
+    data class BoardDetails(val boardId: String) : ActiveOverlay {
+        override val parentTabResId: Int = R.string.nav_boards
+    }
+
+    data class BeaconDetails(val beaconId: String) : ActiveOverlay {
+        override val parentTabResId: Int = R.string.nav_beacons
+    }
+
     companion object {
         val StackSaver = listSaver<List<ActiveOverlay>, Any>(
             save = { stack ->
                 stack.flatMap { overlay ->
                     when (overlay) {
-                        ActiveOverlay.None -> listOf("none")
-                        ActiveOverlay.Permissions -> listOf("permissions")
-                        is ActiveOverlay.NavigationCard -> listOf("nav", overlay.titleResId)
+                        None -> listOf("none")
+                        Permissions -> listOf("permissions")
+                        is NavigationCard -> listOf("nav", overlay.titleResId)
+                        is BoardDetails -> listOf("board_details", overlay.boardId)
+                        is BeaconDetails -> listOf("beacon_details", overlay.beaconId)
                     }
                 }
             },
@@ -63,17 +76,31 @@ sealed interface ActiveOverlay {
                 while (index < saved.size) {
                     when (saved[index]) {
                         "none" -> {
-                            restored.add(ActiveOverlay.None)
+                            restored.add(None)
                             index += 1
                         }
                         "permissions" -> {
-                            restored.add(ActiveOverlay.Permissions)
+                            restored.add(Permissions)
                             index += 1
                         }
                         "nav" -> {
                             val resId = saved.getOrNull(index + 1) as? Int
                             if (resId != null) {
-                                restored.add(ActiveOverlay.NavigationCard(resId))
+                                restored.add(NavigationCard(resId))
+                            }
+                            index += 2
+                        }
+                        "board_details" -> {
+                            val boardId = saved.getOrNull(index + 1) as? String
+                            if (boardId != null) {
+                                restored.add(BoardDetails(boardId))
+                            }
+                            index += 2
+                        }
+                        "beacon_details" -> {
+                            val beaconId = saved.getOrNull(index + 1) as? String
+                            if (beaconId != null) {
+                                restored.add(BeaconDetails(beaconId))
                             }
                             index += 2
                         }
@@ -87,20 +114,40 @@ sealed interface ActiveOverlay {
 }
 
 @Composable
+fun rememberOverlayContentMaxHeight(): Dp {
+    val configuration = LocalConfiguration.current
+    val screenHeight = configuration.screenHeightDp.dp
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    return if (isLandscape) {
+        (screenHeight - 172.dp).coerceIn(110.dp, 260.dp)
+    } else {
+        (screenHeight * 0.48f).coerceIn(200.dp, 420.dp)
+    }
+}
+
+@Composable
 fun OverlayWindow(
     modifier: Modifier = Modifier,
     maxWidth: Dp = 440.dp,
     title: String? = null,
+    onBack: (() -> Unit)? = null,
     onClose: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val effectiveMaxWidth = if (isLandscape) maxOf(maxWidth, 520.dp) else maxWidth
+    val horizontalPadding = if (isLandscape) 20.dp else 24.dp
+    val verticalPadding = if (isLandscape) 14.dp else 24.dp
+    val sectionSpacing = if (isLandscape) 10.dp else 16.dp
+
     val shape = RoundedCornerShape(28.dp)
     val defaultPaneTitle = stringResource(R.string.overlay_pane_title)
 
     Surface(
         modifier = modifier
             .fillMaxWidth()
-            .widthIn(max = maxWidth)
+            .widthIn(max = effectiveMaxWidth)
             .clip(shape)
             .focusGroup()
             .semantics {
@@ -122,8 +169,11 @@ fun OverlayWindow(
         shadowElevation = 12.dp
     ) {
         Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.padding(
+                horizontal = horizontalPadding,
+                vertical = verticalPadding
+            ),
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
             if (title != null) {
                 Row(
@@ -131,6 +181,19 @@ fun OverlayWindow(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
+                    if (onBack != null) {
+                        IconButton(
+                            onClick = onBack,
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                contentDescription = stringResource(R.string.overlay_back),
+                                tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
                     Text(
                         text = title,
                         style = MaterialTheme.typography.titleLarge,

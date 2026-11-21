@@ -1,9 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="overlay_pane_title">Okno dialogowe</string>
+    <string name="overlay_back">Wróć</string>
     <string name="overlay_close">Zamknij okno</string>
     <string name="boards_empty">Brak zapisanych boardów w tej przestrzeni.</string>
     <string name="beacons_empty">Nie wykryto żadnego beacona w pobliżu.</string>
     <string name="beacons_distance_format">%.1f m</string>
     <string name="overlay_coming_soon">Widok w przygotowaniu</string>
+    <string name="item_not_found">Nie znaleziono wybranego elementu.</string>
+
+    <string name="board_updated_format">Zaktualizowano: %1$s</string>
+    <string name="board_updated_just_now">Przed chwilą</string>
+    <string name="board_content_empty">Brak zawartości na tym boardzie.</string>
+    <string name="board_field_title">Tytuł</string>
+    <string name="board_field_room">Strefa / Sala</string>
+    <string name="board_field_content">Zawartość</string>
+    <string name="action_edit">Edytuj</string>
+    <string name="action_save">Zapisz</string>
+    <string name="action_cancel">Anuluj</string>
+
+    <string name="beacon_status_active">W zasięgu</string>
+    <string name="beacon_status_out_of_range">Poza zasięgiem</string>
+    <string name="beacon_metric_distance">Dystans</string>
+    <string name="beacon_metric_rssi">Sygnał RSSI</string>
+    <string name="beacon_metric_major_minor">Major / Minor</string>
+    <string name="beacon_metric_boards">Boardy</string>
+    <string name="beacon_rssi_format">%1$d dBm</string>
+    <string name="beacon_major_minor_format">%1$d / %2$d</string>
+    <string name="beacon_detail_uuid">Proximity UUID</string>
+    <string name="beacon_detail_mac">Adres MAC</string>
+    <string name="beacon_detail_tx_power">Moc Tx (1 m)</string>
+    <string name="beacon_detail_last_seen">Ostatni pakiet</string>
+
+    <string name="board_media_add">Dodaj zdjęcie lub GIF</string>
+    <string name="board_media_change">Zmień multimedia</string>
+    <string name="board_media_remove">Usuń multimedia</string>
+    <string name="board_media_description">Załącznik graficzny boarda</string>
 </resources>

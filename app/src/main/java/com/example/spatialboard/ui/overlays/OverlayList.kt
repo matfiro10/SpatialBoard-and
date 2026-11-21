@@ -24,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -37,14 +36,13 @@ fun <T> OverlayList(
     key: ((T) -> Any)? = null,
     itemContent: @Composable (T) -> Unit
 ) {
-    val screenHeight = LocalConfiguration.current.screenHeightDp.dp
-    val maxListHeight = (screenHeight * 0.45f).coerceIn(160.dp, 380.dp)
+    val maxListHeight = rememberOverlayContentMaxHeight()
 
     if (items.isEmpty()) {
         Box(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(vertical = 32.dp),
+                .padding(vertical = 24.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(

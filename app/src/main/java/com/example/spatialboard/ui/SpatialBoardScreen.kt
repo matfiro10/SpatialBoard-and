@@ -1,5 +1,6 @@
 package com.example.spatialboard.ui
 
+import android.content.res.Configuration
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -24,6 +25,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,7 @@ fun SpatialBoardScreen() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrimInteractionSource = remember { MutableInteractionSource() }
+    val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     var overlayStack by rememberSaveable(stateSaver = ActiveOverlay.StackSaver) {
         mutableStateOf<List<ActiveOverlay>>(emptyList())
@@ -140,6 +143,12 @@ fun SpatialBoardScreen() {
             onOpenSettings = {
                 AppPermissions.openAppSettings(context)
             },
+            onNavigate = { overlay ->
+                overlayStack = overlayStack + overlay
+            },
+            onBack = {
+                overlayStack = overlayStack.dropLast(1)
+            },
             onCloseAll = {
                 overlayStack = emptyList()
             },
@@ -147,7 +156,12 @@ fun SpatialBoardScreen() {
                 .align(Alignment.Center)
                 .safeDrawingPadding()
                 .imePadding()
-                .padding(24.dp)
+                .padding(
+                    start = 24.dp,
+                    end = 24.dp,
+                    top = if (isLandscape) 12.dp else 24.dp,
+                    bottom = if (isLandscape) 84.dp else 96.dp
+                )
         )
 
         NavigationCapsule(
