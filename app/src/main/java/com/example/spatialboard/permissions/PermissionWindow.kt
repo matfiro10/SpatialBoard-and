@@ -28,7 +28,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.spatialboard.R
-import com.example.spatialboard.ui.OverlayWindow
+import com.example.spatialboard.ui.overlays.OverlayWindow
 import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 
 @Composable
@@ -38,57 +38,49 @@ fun PermissionWindow(
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    OverlayWindow(modifier = modifier) {
-        Column(
-            modifier = Modifier.padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+    OverlayWindow(
+        modifier = modifier,
+        title = stringResource(R.string.permissions_title)
+    ) {
+        Text(
+            text = stringResource(R.string.permissions_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            PermissionItemRow(
+                icon = Icons.Rounded.CameraAlt,
+                titleResId = R.string.permissions_camera_title,
+                descResId = R.string.permissions_camera_desc
+            )
+            PermissionItemRow(
+                icon = Icons.Rounded.Bluetooth,
+                titleResId = R.string.permissions_ble_title,
+                descResId = R.string.permissions_ble_desc
+            )
+            PermissionItemRow(
+                icon = Icons.Rounded.LocationOn,
+                titleResId = R.string.permissions_location_title,
+                descResId = R.string.permissions_location_desc
+            )
+        }
+
+        Button(
+            onClick = if (isPermanentlyDenied) onOpenSettings else onRequestPermissions,
+            modifier = Modifier.fillMaxWidth(),
+            shape = CircleShape
         ) {
             Text(
-                text = stringResource(R.string.permissions_title),
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface
+                text = stringResource(
+                    if (isPermanentlyDenied) {
+                        R.string.permissions_action_settings
+                    } else {
+                        R.string.permissions_action_grant
+                    }
+                ),
+                modifier = Modifier.padding(vertical = 4.dp)
             )
-
-            Text(
-                text = stringResource(R.string.permissions_subtitle),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                PermissionItemRow(
-                    icon = Icons.Rounded.CameraAlt,
-                    titleResId = R.string.permissions_camera_title,
-                    descResId = R.string.permissions_camera_desc
-                )
-                PermissionItemRow(
-                    icon = Icons.Rounded.Bluetooth,
-                    titleResId = R.string.permissions_ble_title,
-                    descResId = R.string.permissions_ble_desc
-                )
-                PermissionItemRow(
-                    icon = Icons.Rounded.LocationOn,
-                    titleResId = R.string.permissions_location_title,
-                    descResId = R.string.permissions_location_desc
-                )
-            }
-
-            Button(
-                onClick = if (isPermanentlyDenied) onOpenSettings else onRequestPermissions,
-                modifier = Modifier.fillMaxWidth(),
-                shape = CircleShape
-            ) {
-                Text(
-                    text = stringResource(
-                        if (isPermanentlyDenied) {
-                            R.string.permissions_action_settings
-                        } else {
-                            R.string.permissions_action_grant
-                        }
-                    ),
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
-            }
         }
     }
 }

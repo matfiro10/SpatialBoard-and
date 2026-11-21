@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="overlay_pane_title">Okno dialogowe</string>
+    <string name="overlay_close">Zamknij okno</string>
+    <string name="boards_empty">Brak zapisanych boardów w tej przestrzeni.</string>
+    <string name="beacons_empty">Nie wykryto żadnego beacona w pobliżu.</string>
+    <string name="beacons_distance_format">%.1f m</string>
+    <string name="overlay_coming_soon">Widok w przygotowaniu</string>
+</resources>
