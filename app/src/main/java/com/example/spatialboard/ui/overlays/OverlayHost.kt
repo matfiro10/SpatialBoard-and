@@ -11,15 +11,15 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spatialboard.R
 import com.example.spatialboard.permissions.PermissionWindow
+import com.example.spatialboard.ui.SpatialBoardViewModel
 
 @Composable
 fun OverlayHost(
@@ -30,11 +30,9 @@ fun OverlayHost(
     onNavigate: (ActiveOverlay) -> Unit,
     onBack: () -> Unit,
     onCloseAll: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    spatialViewModel: SpatialBoardViewModel = viewModel()
 ) {
-    var boards by remember { mutableStateOf(SampleSpatialData.initialBoards) }
-    val beacons by remember { mutableStateOf(SampleSpatialData.initialBeacons) }
-
     AnimatedContent(
         targetState = activeOverlay,
         transitionSpec = {
@@ -61,6 +59,7 @@ fun OverlayHost(
                 ) {
                     when (overlay.titleResId) {
                         R.string.nav_boards -> {
+                            val boards by spatialViewModel.boards.collectAsStateWithLifecycle()
                             BoardsOverlayContent(
                                 boards = boards,
                                 onBoardClick = { board ->
@@ -69,6 +68,7 @@ fun OverlayHost(
                             )
                         }
                         R.string.nav_beacons -> {
+                            val beacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
                             BeaconsOverlayContent(
                                 beacons = beacons,
                                 onBeaconClick = { beacon ->
@@ -88,6 +88,7 @@ fun OverlayHost(
                 }
             }
             is ActiveOverlay.BoardDetails -> {
+                val boards by spatialViewModel.boards.collectAsStateWithLifecycle()
                 val board = boards.find { it.id == overlay.boardId }
                 OverlayWindow(
                     title = board?.title ?: stringResource(R.string.nav_boards),
@@ -98,9 +99,7 @@ fun OverlayHost(
                         BoardDetailsOverlayContent(
                             board = board,
                             onSave = { updatedBoard ->
-                                boards = boards.map { item ->
-                                    if (item.id == updatedBoard.id) updatedBoard else item
-                                }
+                                spatialViewModel.saveBoard(updatedBoard)
                             }
                         )
                     } else {
@@ -114,6 +113,7 @@ fun OverlayHost(
                 }
             }
             is ActiveOverlay.BeaconDetails -> {
+                val beacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
                 val beacon = beacons.find { it.id == overlay.beaconId }
                 OverlayWindow(
                     title = beacon?.name ?: stringResource(R.string.nav_beacons),

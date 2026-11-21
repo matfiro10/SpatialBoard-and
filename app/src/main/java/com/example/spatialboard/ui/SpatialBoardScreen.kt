@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spatialboard.camera.ArCameraView
 import com.example.spatialboard.permissions.AppPermissions
 import com.example.spatialboard.ui.overlays.ActiveOverlay
@@ -39,7 +40,9 @@ import com.example.spatialboard.ui.overlays.OverlayHost
 import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 
 @Composable
-fun SpatialBoardScreen() {
+fun SpatialBoardScreen(
+    spatialViewModel: SpatialBoardViewModel = viewModel()
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrimInteractionSource = remember { MutableInteractionSource() }
@@ -152,6 +155,7 @@ fun SpatialBoardScreen() {
             onCloseAll = {
                 overlayStack = emptyList()
             },
+            spatialViewModel = spatialViewModel,
             modifier = Modifier
                 .align(Alignment.Center)
                 .safeDrawingPadding()
