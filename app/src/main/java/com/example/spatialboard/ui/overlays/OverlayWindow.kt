@@ -57,6 +57,11 @@ sealed interface ActiveOverlay {
         override val parentTabResId: Int = R.string.nav_beacons
     }
 
+    data class CreateBoard(val preselectedBeaconId: String? = null) : ActiveOverlay {
+        override val parentTabResId: Int
+            get() = if (preselectedBeaconId != null) R.string.nav_beacons else R.string.nav_add
+    }
+
     companion object {
         val StackSaver = listSaver<List<ActiveOverlay>, Any>(
             save = { stack ->
@@ -67,6 +72,7 @@ sealed interface ActiveOverlay {
                         is NavigationCard -> listOf("nav", overlay.titleResId)
                         is BoardDetails -> listOf("board_details", overlay.boardId)
                         is BeaconDetails -> listOf("beacon_details", overlay.beaconId)
+                        is CreateBoard -> listOf("create_board", overlay.preselectedBeaconId.orEmpty())
                     }
                 }
             },
@@ -102,6 +108,12 @@ sealed interface ActiveOverlay {
                             if (beaconId != null) {
                                 restored.add(BeaconDetails(beaconId))
                             }
+                            index += 2
+                        }
+                        "create_board" -> {
+                            val beaconId = (saved.getOrNull(index + 1) as? String)
+                                ?.takeIf { it.isNotEmpty() }
+                            restored.add(CreateBoard(beaconId))
                             index += 2
                         }
                         else -> index += 1

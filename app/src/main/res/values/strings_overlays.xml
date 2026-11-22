@@ -36,4 +36,19 @@
     <string name="board_media_change">Zmień multimedia</string>
     <string name="board_media_remove">Usuń multimedia</string>
     <string name="board_media_description">Załącznik graficzny boarda</string>
+
+    <string name="create_board_window_title">Nowa tablica</string>
+    <string name="beacon_create_board_action">Utwórz tablicę dla tego beacona</string>
+    <string name="create_board_beacon_label">Powiązany nadajnik BLE</string>
+    <string name="create_board_no_beacon">Brak (tylko lokalnie)</string>
+    <string name="create_board_assigned_beacon_id">Wybrany beacon: %1$s</string>
+    <string name="create_board_title_hint">Tytuł tablicy</string>
+    <string name="create_board_room_hint">Pomieszczenie / strefa</string>
+    <string name="create_board_content_hint">Treść lub notatka</string>
+    <string name="create_board_add_media">Dodaj zdjęcie lub GIF</string>
+    <string name="create_board_media_type_gif">Animacja GIF</string>
+    <string name="create_board_media_type_image">Obraz</string>
+    <string name="create_board_remove_media">Usuń załącznik</string>
+    <string name="create_board_tags_hint">Tagi (oddzielone przecinkiem)</string>
+    <string name="create_board_save">Zapisz tablicę</string>
 </resources>

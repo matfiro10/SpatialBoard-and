@@ -55,7 +55,6 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.spatialboard.R
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoardDetailsOverlayContent(
     board: BoardItem,

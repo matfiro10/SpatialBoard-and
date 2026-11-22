@@ -86,6 +86,17 @@ fun OverlayHost(
                                 }
                             )
                         }
+                        R.string.nav_add -> {
+                            val availableBeacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
+                            CreateBoardOverlayContent(
+                                availableBeacons = availableBeacons,
+                                preselectedBeaconId = null,
+                                onCreateBoard = { newBoard ->
+                                    spatialViewModel.saveBoard(newBoard)
+                                    onNavigate(ActiveOverlay.NavigationCard(R.string.nav_boards))
+                                }
+                            )
+                        }
                         else -> {
                             Text(
                                 text = stringResource(R.string.overlay_coming_soon),
@@ -166,7 +177,12 @@ fun OverlayHost(
                     onClose = onCloseAll
                 ) {
                     if (displayedBeacon != null) {
-                        BeaconDetailsOverlayContent(beacon = displayedBeacon)
+                        BeaconDetailsOverlayContent(
+                            beacon = displayedBeacon,
+                            onCreateBoard = { beaconId ->
+                                onNavigate(ActiveOverlay.CreateBoard(preselectedBeaconId = beaconId))
+                            }
+                        )
                     } else {
                         Text(
                             text = stringResource(R.string.item_not_found),
@@ -175,6 +191,24 @@ fun OverlayHost(
                             modifier = Modifier.padding(vertical = 16.dp)
                         )
                     }
+                }
+            }
+            is ActiveOverlay.CreateBoard -> {
+                val availableBeacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
+
+                OverlayWindow(
+                    title = stringResource(R.string.create_board_window_title),
+                    onBack = onBack,
+                    onClose = onCloseAll
+                ) {
+                    CreateBoardOverlayContent(
+                        availableBeacons = availableBeacons,
+                        preselectedBeaconId = overlay.preselectedBeaconId,
+                        onCreateBoard = { newBoard ->
+                            spatialViewModel.saveBoard(newBoard)
+                            onBack()
+                        }
+                    )
                 }
             }
         }
