@@ -34,6 +34,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.spatialboard.ble.BleBeaconScanner
 import com.example.spatialboard.camera.ArCameraView
 import com.example.spatialboard.permissions.AppPermissions
 import com.example.spatialboard.ui.overlays.ActiveOverlay
@@ -51,6 +52,9 @@ fun SpatialBoardScreen(
 
     val availableArBoards by spatialViewModel.availableArBoards.collectAsStateWithLifecycle()
     val pendingArBoard by spatialViewModel.pendingArBoard.collectAsStateWithLifecycle()
+
+    val bleScanner = remember(context) { BleBeaconScanner(context) }
+    val detectedBeacons by bleScanner.beacons.collectAsStateWithLifecycle()
 
     var overlayStack by rememberSaveable(stateSaver = ActiveOverlay.StackSaver) {
         mutableStateOf<List<ActiveOverlay>>(emptyList())
@@ -74,20 +78,45 @@ fun SpatialBoardScreen(
         isPermanentlyDenied = !hasAllPermissions && AppPermissions.isPermanentlyDenied(context)
     }
 
-    DisposableEffect(lifecycleOwner) {
+    DisposableEffect(lifecycleOwner, hasAllPermissions) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) {
-                hasCameraPermission = AppPermissions.hasCameraPermission(context)
-                hasAllPermissions = AppPermissions.hasAllPermissions(context)
-                if (hasAllPermissions) {
-                    isPermanentlyDenied = false
+            when (event) {
+                Lifecycle.Event.ON_START -> {
+                    if (hasAllPermissions) {
+                        bleScanner.startScanning()
+                    }
                 }
+                Lifecycle.Event.ON_RESUME -> {
+                    hasCameraPermission = AppPermissions.hasCameraPermission(context)
+                    hasAllPermissions = AppPermissions.hasAllPermissions(context)
+                    if (hasAllPermissions) {
+                        isPermanentlyDenied = false
+                        bleScanner.startScanning()
+                    } else {
+                        bleScanner.stopScanning()
+                        spatialViewModel.clearDetectedBeacons()
+                    }
+                }
+                Lifecycle.Event.ON_STOP -> {
+                    bleScanner.stopScanning()
+                    spatialViewModel.clearDetectedBeacons()
+                }
+                else -> Unit
             }
+        }
+        if (hasAllPermissions) {
+            bleScanner.startScanning()
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
+            bleScanner.stopScanning()
+            spatialViewModel.clearDetectedBeacons()
         }
+    }
+
+    LaunchedEffect(detectedBeacons) {
+        spatialViewModel.updateDetectedBeacons(detectedBeacons)
     }
 
     LaunchedEffect(Unit) {

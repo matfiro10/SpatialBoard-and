@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
+import androidx.compose.material.icons.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Schedule
@@ -46,31 +47,35 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.spatialboard.R
+import com.example.spatialboard.ble.DetectedBeacon
+import com.example.spatialboard.ui.createSpatialImageLoader
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoardDetailsOverlayContent(
     board: BoardItem,
     onSave: (BoardItem) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    nearbyBeacons: List<DetectedBeacon> = emptyList()
 ) {
     val context = LocalContext.current
     val maxContentHeight = rememberOverlayContentMaxHeight()
     val updatedNowLabel = stringResource(R.string.board_updated_just_now)
-
 
     var isEditing by rememberSaveable(board.id) { mutableStateOf(false) }
     var draftTitle by rememberSaveable(board.id, isEditing) { mutableStateOf(board.title) }
     var draftRoom by rememberSaveable(board.id, isEditing) { mutableStateOf(board.roomLabel) }
     var draftContent by rememberSaveable(board.id, isEditing) { mutableStateOf(board.content) }
     var draftMediaUri by rememberSaveable(board.id, isEditing) { mutableStateOf(board.mediaUri) }
+    var draftBeaconId by rememberSaveable(board.id, isEditing) { mutableStateOf(board.beaconId) }
 
     val mediaPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -204,6 +209,68 @@ fun BoardDetailsOverlayContent(
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth()
                     )
+
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = stringResource(R.string.board_field_beacon),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+
+                        val boundBeaconId = draftBeaconId
+                        if (boundBeaconId != null) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.BluetoothSearching,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Text(
+                                    text = nearbyBeacons.firstOrNull { it.id == boundBeaconId }?.name
+                                        ?: boundBeaconId,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                TextButton(onClick = { draftBeaconId = null }) {
+                                    Text(stringResource(R.string.board_beacon_unbind))
+                                }
+                            }
+                        } else if (nearbyBeacons.isNotEmpty()) {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                nearbyBeacons.take(4).forEach { beacon ->
+                                    Surface(
+                                        onClick = { draftBeaconId = beacon.id },
+                                        shape = CircleShape,
+                                        color = MaterialTheme.colorScheme.secondaryContainer
+                                    ) {
+                                        Text(
+                                            text = "${beacon.name} (${beacon.rssi} dBm)",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = stringResource(R.string.board_beacon_none_nearby),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
 
@@ -224,6 +291,7 @@ fun BoardDetailsOverlayContent(
                                     roomLabel = draftRoom.trim().ifBlank { board.roomLabel },
                                     content = draftContent.trim(),
                                     mediaUri = draftMediaUri,
+                                    beaconId = draftBeaconId,
                                     updatedAt = updatedNowLabel
                                 )
                             )
@@ -259,6 +327,28 @@ fun BoardDetailsOverlayContent(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+
+                    if (board.beaconId != null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.BluetoothSearching,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Text(
+                                text = nearbyBeacons.firstOrNull { it.id == board.beaconId }?.name
+                                    ?: board.beaconId,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
                     }
 
                     if (board.tags.isNotEmpty()) {
@@ -339,6 +429,7 @@ private fun BoardMediaPreview(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val imageLoader = remember(context) { createSpatialImageLoader(context) }
     val shape = RoundedCornerShape(18.dp)
 
     Surface(
@@ -359,8 +450,10 @@ private fun BoardMediaPreview(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(mediaUri)
+                    .memoryCacheKey(mediaUri)
                     .crossfade(true)
                     .build(),
+                imageLoader = imageLoader,
                 contentDescription = stringResource(R.string.board_media_description),
                 contentScale = ContentScale.Fit,
                 modifier = Modifier

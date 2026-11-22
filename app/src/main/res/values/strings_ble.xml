@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="board_field_beacon">Powiązany beacon BLE</string>
+    <string name="board_beacon_unbind">Odłącz</string>
+    <string name="board_beacon_none_nearby">Brak wykrytych beaconów w pobliżu</string>
+
+    <string name="settings_ble_range_title">Zasięg wykrywania beaconów</string>
+    <string name="settings_ble_range_badge">~%1$d m (%2$d dBm)</string>
+    <string name="settings_ble_preset_immediate">Bardzo blisko — tylko nadajnik tuż przy telefonie</string>
+    <string name="settings_ble_preset_near">Blisko — izoluje sąsiednie sale i stanowiska</string>
+    <string name="settings_ble_preset_room">Średni zasięg — obejmuje całe pomieszczenie</string>
+    <string name="settings_ble_preset_wide">Szeroki zasięg — wykrywa też dalsze beacony</string>
+    <string name="settings_ble_scale_wide">Szeroki (-95 dBm)</string>
+    <string name="settings_ble_scale_near">Bliski (-50 dBm)</string>
+</resources>

@@ -98,11 +98,10 @@ fun OverlayHost(
                             )
                         }
                         else -> {
-                            Text(
-                                text = stringResource(R.string.overlay_coming_soon),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 16.dp)
+                            val minRssiThreshold by spatialViewModel.minRssiThreshold.collectAsStateWithLifecycle()
+                            BleRangeSettingsSection(
+                                minRssiThreshold = minRssiThreshold,
+                                onThresholdChange = spatialViewModel::setMinRssiThreshold
                             )
                         }
                     }
@@ -112,6 +111,7 @@ fun OverlayHost(
                 val detailState by remember(overlay.boardId) {
                     spatialViewModel.observeBoardDetail(overlay.boardId)
                 }.collectAsStateWithLifecycle(initialValue = BoardDetailState.Loading)
+                val nearbyBeacons by spatialViewModel.activeBeacons.collectAsStateWithLifecycle()
 
                 val windowTitle = (detailState as? BoardDetailState.Ready)?.board?.title
                     ?: stringResource(R.string.nav_boards)
@@ -135,6 +135,7 @@ fun OverlayHost(
                         is BoardDetailState.Ready -> {
                             BoardDetailsOverlayContent(
                                 board = state.board,
+                                nearbyBeacons = nearbyBeacons,
                                 onSave = { updatedBoard ->
                                     spatialViewModel.saveBoard(updatedBoard)
                                 }
