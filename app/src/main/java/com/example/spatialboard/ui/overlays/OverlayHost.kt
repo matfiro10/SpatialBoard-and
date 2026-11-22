@@ -141,12 +141,15 @@ fun OverlayHost(
                 }
             }
             is ActiveOverlay.BeaconDetails -> {
+                val initialBeacon = remember(overlay.beaconId) {
+                    spatialViewModel.beacons.value.find { it.id == overlay.beaconId }
+                }
                 val liveBeacon by remember(overlay.beaconId) {
                     spatialViewModel.observeBeacon(overlay.beaconId)
-                }.collectAsStateWithLifecycle(initialValue = null)
+                }.collectAsStateWithLifecycle(initialValue = initialBeacon)
 
                 var lastKnownBeacon by remember(overlay.beaconId) {
-                    mutableStateOf<BeaconItem?>(null)
+                    mutableStateOf(initialBeacon)
                 }
 
                 LaunchedEffect(liveBeacon) {

@@ -12,9 +12,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -27,6 +29,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.paging.LoadState
+import androidx.paging.compose.LazyPagingItems
+import androidx.paging.compose.itemKey
 
 @Composable
 fun <T> OverlayList(
@@ -36,40 +41,110 @@ fun <T> OverlayList(
     key: ((T) -> Any)? = null,
     itemContent: @Composable (T) -> Unit
 ) {
-    val maxListHeight = rememberOverlayContentMaxHeight()
-
-    if (items.isEmpty()) {
-        Box(
-            modifier = modifier
-                .fillMaxWidth()
-                .padding(vertical = 24.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = emptyText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
+    OverlayListContainer(
+        isEmpty = items.isEmpty(),
+        emptyText = emptyText,
+        modifier = modifier
+    ) {
+        items(
+            items = items,
+            key = key
+        ) { item ->
+            itemContent(item)
         }
-    } else {
-        LazyColumn(
-            modifier = modifier
-                .fillMaxWidth()
-                .heightIn(max = maxListHeight)
-                .clickable(
-                    interactionSource = remember { MutableInteractionSource() },
-                    indication = null,
-                    onClick = {}
-                ),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            items(
-                items = items,
-                key = key
-            ) { item ->
+    }
+}
+
+@Composable
+fun <T : Any> OverlayList(
+    items: LazyPagingItems<T>,
+    emptyText: String,
+    modifier: Modifier = Modifier,
+    key: ((T) -> Any)? = null,
+    itemContent: @Composable (T) -> Unit
+) {
+    val isInitialLoading = items.loadState.refresh is LoadState.Loading && items.itemCount == 0
+
+    OverlayListContainer(
+        isEmpty = items.itemCount == 0,
+        emptyText = emptyText,
+        isLoading = isInitialLoading,
+        modifier = modifier
+    ) {
+        items(
+            count = items.itemCount,
+            key = items.itemKey(key)
+        ) { index ->
+            val item = items[index]
+            if (item != null) {
                 itemContent(item)
             }
+        }
+
+        if (items.loadState.append is LoadState.Loading) {
+            item(key = "paging_append_loader") {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(22.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OverlayListContainer(
+    isEmpty: Boolean,
+    emptyText: String,
+    modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+    content: LazyListScope.() -> Unit
+) {
+    val maxListHeight = rememberOverlayContentMaxHeight()
+
+    when {
+        isLoading -> {
+            Box(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(modifier = Modifier.size(28.dp))
+            }
+        }
+        isEmpty -> {
+            Box(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 24.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = emptyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+        else -> {
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .heightIn(max = maxListHeight)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = {}
+                    ),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                content = content
+            )
         }
     }
 }
