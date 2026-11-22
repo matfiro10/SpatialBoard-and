@@ -1,4 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="camera_error_title">Nie udało się uruchomić kamery AR</string>
+    <string name="ar_scan_surface_hint">Poruszaj telefonem, aby umieścić: %1$s</string>
+    <string name="ar_tap_to_place_hint">Dotknij powierzchni, aby zakotwiczyć: %1$s</string>
+    <string name="ar_placed_count">Tablice w AR: %1$d</string>
+    <string name="ar_cancel_placement">Anuluj</string>
+    <string name="ar_clear_anchors">Usuń tablice z AR</string>
+    <string name="board_place_in_ar">Umieść w przestrzeni AR</string>
+    <string name="ar_prev_board">Poprzednia tablica</string>
+    <string name="ar_next_board">Następna tablica</string>
 </resources>

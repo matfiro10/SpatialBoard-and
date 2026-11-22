@@ -50,6 +50,12 @@ class RoomSpatialRepository(
             .distinctUntilChanged()
     }
 
+    override fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>> {
+        return boardDao.observeBoardsForAr(beaconIds).map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
     override suspend fun upsertBoard(board: BoardItem) {
         boardDao.upsertBoard(board.toEntity())
     }

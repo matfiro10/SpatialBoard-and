@@ -14,6 +14,9 @@ interface BoardDao {
     @Query("SELECT * FROM boards WHERE id = :boardId")
     fun observeBoardById(boardId: String): Flow<BoardEntity?>
 
+    @Query("SELECT * FROM boards WHERE beaconId IS NULL OR beaconId IN (:beaconIds) ORDER BY updatedAtEpoch DESC")
+    fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardEntity>>
+
     @Upsert
     suspend fun upsertBoard(board: BoardEntity)
 

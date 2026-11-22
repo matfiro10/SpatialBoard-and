@@ -24,6 +24,7 @@ interface SpatialRepository {
         outOfRangeThresholdMillis: Long = 6_000L,
         evictThresholdMillis: Long = 30_000L
     )
+    fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>>
 }
 
 class InMemorySpatialRepository : SpatialRepository {
@@ -47,6 +48,13 @@ class InMemorySpatialRepository : SpatialRepository {
         return beaconsFlow
             .map { list -> list.find { it.id == beaconId } }
             .distinctUntilChanged()
+    }
+
+    override fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>> {
+        val idSet = beaconIds.toSet()
+        return boardsFlow.map { list ->
+            list.filter { it.beaconId == null || it.beaconId in idSet }
+        }
     }
 
     override suspend fun upsertBoard(board: BoardItem) {

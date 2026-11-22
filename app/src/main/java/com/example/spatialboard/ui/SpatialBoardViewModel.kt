@@ -13,8 +13,13 @@ import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.ui.overlays.BeaconItem
 import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -40,6 +45,38 @@ class SpatialBoardViewModel(
             started = SharingStarted.WhileSubscribed(5_000L),
             initialValue = emptyList()
         )
+
+    val availableArBoards: StateFlow<List<BoardItem>> = combine(
+        beacons,
+        beacons
+            .map { list -> list.filter { it.isInRange }.map { it.id }.distinct().sorted() }
+            .distinctUntilChanged()
+            .flatMapLatest { activeIds ->
+                repository.observeBoardsForAr(activeIds)
+            }
+    ) { currentBeacons, boards ->
+        val distanceByBeaconId = currentBeacons
+            .filter { it.isInRange }
+            .associate { it.id to it.distanceMeters }
+
+        boards.sortedWith(
+            compareBy<BoardItem>(
+                { board -> if (board.beaconId != null && board.beaconId in distanceByBeaconId) 0 else 1 },
+                { board -> board.beaconId?.let { distanceByBeaconId[it] } ?: Float.MAX_VALUE }
+            )
+        )
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = emptyList()
+    )
+
+    private val _pendingArBoard = MutableStateFlow<BoardItem?>(null)
+    val pendingArBoard: StateFlow<BoardItem?> = _pendingArBoard.asStateFlow()
+
+    fun selectBoardForAr(board: BoardItem?) {
+        _pendingArBoard.value = board
+    }
 
     fun observeBoardDetail(boardId: String): Flow<BoardDetailState> {
         return repository.observeBoardById(boardId).map { board ->

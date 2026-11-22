@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spatialboard.camera.ArCameraView
 import com.example.spatialboard.permissions.AppPermissions
@@ -47,6 +48,9 @@ fun SpatialBoardScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     val scrimInteractionSource = remember { MutableInteractionSource() }
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+
+    val availableArBoards by spatialViewModel.availableArBoards.collectAsStateWithLifecycle()
+    val pendingArBoard by spatialViewModel.pendingArBoard.collectAsStateWithLifecycle()
 
     var overlayStack by rememberSaveable(stateSaver = ActiveOverlay.StackSaver) {
         mutableStateOf<List<ActiveOverlay>>(emptyList())
@@ -115,7 +119,15 @@ fun SpatialBoardScreen(
         if (hasCameraPermission) {
             ArCameraView(
                 modifier = Modifier.fillMaxSize(),
-                planeRenderer = false
+                availableBoards = availableArBoards,
+                pendingBoard = pendingArBoard,
+                isOverlayOpen = activeOverlay != ActiveOverlay.None,
+                onSelectPendingBoard = { board ->
+                    spatialViewModel.selectBoardForAr(board)
+                },
+                onBoardClick = { boardId ->
+                    overlayStack = listOf(ActiveOverlay.BoardDetails(boardId))
+                }
             )
         }
 
