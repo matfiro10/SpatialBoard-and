@@ -41,7 +41,7 @@ import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 
 @Composable
 fun SpatialBoardScreen(
-    spatialViewModel: SpatialBoardViewModel = viewModel()
+    spatialViewModel: SpatialBoardViewModel = viewModel(factory = SpatialBoardViewModel.Factory)
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current

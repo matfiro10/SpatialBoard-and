@@ -6,19 +6,29 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.spatialboard.R
 import com.example.spatialboard.permissions.PermissionWindow
+import com.example.spatialboard.ui.BoardDetailState
 import com.example.spatialboard.ui.SpatialBoardViewModel
 
 @Composable
@@ -31,7 +41,7 @@ fun OverlayHost(
     onBack: () -> Unit,
     onCloseAll: () -> Unit,
     modifier: Modifier = Modifier,
-    spatialViewModel: SpatialBoardViewModel = viewModel()
+    spatialViewModel: SpatialBoardViewModel = viewModel(factory = SpatialBoardViewModel.Factory)
 ) {
     AnimatedContent(
         targetState = activeOverlay,
@@ -59,7 +69,7 @@ fun OverlayHost(
                 ) {
                     when (overlay.titleResId) {
                         R.string.nav_boards -> {
-                            val boards by spatialViewModel.boards.collectAsStateWithLifecycle()
+                            val boards = spatialViewModel.boardsPagingFlow.collectAsLazyPagingItems()
                             BoardsOverlayContent(
                                 boards = boards,
                                 onBoardClick = { board ->
@@ -88,40 +98,72 @@ fun OverlayHost(
                 }
             }
             is ActiveOverlay.BoardDetails -> {
-                val boards by spatialViewModel.boards.collectAsStateWithLifecycle()
-                val board = boards.find { it.id == overlay.boardId }
+                val detailState by remember(overlay.boardId) {
+                    spatialViewModel.observeBoardDetail(overlay.boardId)
+                }.collectAsStateWithLifecycle(initialValue = BoardDetailState.Loading)
+
+                val windowTitle = (detailState as? BoardDetailState.Ready)?.board?.title
+                    ?: stringResource(R.string.nav_boards)
+
                 OverlayWindow(
-                    title = board?.title ?: stringResource(R.string.nav_boards),
+                    title = windowTitle,
                     onBack = onBack,
                     onClose = onCloseAll
                 ) {
-                    if (board != null) {
-                        BoardDetailsOverlayContent(
-                            board = board,
-                            onSave = { updatedBoard ->
-                                spatialViewModel.saveBoard(updatedBoard)
+                    when (val state = detailState) {
+                        BoardDetailState.Loading -> {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 24.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator(modifier = Modifier.size(28.dp))
                             }
-                        )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.item_not_found),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 16.dp)
-                        )
+                        }
+                        is BoardDetailState.Ready -> {
+                            BoardDetailsOverlayContent(
+                                board = state.board,
+                                onSave = { updatedBoard ->
+                                    spatialViewModel.saveBoard(updatedBoard)
+                                }
+                            )
+                        }
+                        BoardDetailState.NotFound -> {
+                            Text(
+                                text = stringResource(R.string.item_not_found),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 16.dp)
+                            )
+                        }
                     }
                 }
             }
             is ActiveOverlay.BeaconDetails -> {
-                val beacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
-                val beacon = beacons.find { it.id == overlay.beaconId }
+                val liveBeacon by remember(overlay.beaconId) {
+                    spatialViewModel.observeBeacon(overlay.beaconId)
+                }.collectAsStateWithLifecycle(initialValue = null)
+
+                var lastKnownBeacon by remember(overlay.beaconId) {
+                    mutableStateOf<BeaconItem?>(null)
+                }
+
+                LaunchedEffect(liveBeacon) {
+                    if (liveBeacon != null) {
+                        lastKnownBeacon = liveBeacon
+                    }
+                }
+
+                val displayedBeacon = liveBeacon ?: lastKnownBeacon?.copy(isInRange = false)
+
                 OverlayWindow(
-                    title = beacon?.name ?: stringResource(R.string.nav_beacons),
+                    title = displayedBeacon?.name ?: stringResource(R.string.nav_beacons),
                     onBack = onBack,
                     onClose = onCloseAll
                 ) {
-                    if (beacon != null) {
-                        BeaconDetailsOverlayContent(beacon = beacon)
+                    if (displayedBeacon != null) {
+                        BeaconDetailsOverlayContent(beacon = displayedBeacon)
                     } else {
                         Text(
                             text = stringResource(R.string.item_not_found),
