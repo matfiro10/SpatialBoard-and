@@ -44,7 +44,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.spatialboard.R
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BoardItem
 import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 import com.google.ar.core.Config
 import com.google.ar.core.Frame
@@ -245,7 +245,7 @@ fun ArCameraView(
 
                     if (hitResult != null) {
                         runCatching { hitResult.createAnchor() }.getOrNull()?.let { newAnchor ->
-                            placed.anchorNode.anchor?.detach()
+                            placed.anchorNode.anchor.detach()
                             placed.anchorNode.anchor = newAnchor
                             placed.viewNode.position = Position(0f, 0.05f, 0f)
                         }
@@ -259,7 +259,7 @@ fun ArCameraView(
                             (right[1] * dx - up[1] * dy) * factor,
                             (right[2] * dx - up[2] * dy) * factor
                         )
-                        val localDelta = placed.anchorNode.anchor?.pose?.inverse()?.rotateVector(worldDelta)
+                        val localDelta = placed.anchorNode.anchor.pose?.inverse()?.rotateVector(worldDelta)
                             ?: worldDelta
                         val currentPos = placed.viewNode.position
                         placed.viewNode.position = Position(
@@ -299,7 +299,7 @@ fun ArCameraView(
                         val existing = placedBoards.removeAt(existingIndex)
                         existing.anchorNode.removeChildNode(existing.viewNode)
                         existing.viewNode.destroy()
-                        existing.anchorNode.anchor?.detach()
+                        existing.anchorNode.anchor.detach()
                         existing.anchorNode.destroy()
                     }
 
@@ -450,7 +450,7 @@ fun ArCameraView(
                                 placedBoards.forEach { placed ->
                                     placed.anchorNode.removeChildNode(placed.viewNode)
                                     placed.viewNode.destroy()
-                                    placed.anchorNode.anchor?.detach()
+                                    placed.anchorNode.anchor.detach()
                                     placed.anchorNode.destroy()
                                 }
                                 placedBoards.clear()

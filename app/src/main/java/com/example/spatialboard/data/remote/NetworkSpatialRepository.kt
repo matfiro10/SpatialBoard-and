@@ -7,7 +7,7 @@ import com.example.spatialboard.R
 import com.example.spatialboard.ble.DetectedBeacon
 import com.example.spatialboard.data.InMemorySpatialRepository
 import com.example.spatialboard.data.SpatialRepository
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BoardItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll

@@ -1,7 +1,7 @@
 package com.example.spatialboard.data
 
 import androidx.paging.PagingData
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BoardItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

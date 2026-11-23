@@ -4,8 +4,8 @@ import com.example.spatialboard.ble.DetectedBeacon
 import com.example.spatialboard.data.DataSourceMode
 import com.example.spatialboard.data.SpatialSettingsStore
 import com.example.spatialboard.data.remote.ServerSyncState
-import com.example.spatialboard.ui.overlays.BeaconItem
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BeaconItem
+import com.example.spatialboard.model.BoardItem
 
 data class ServerConfig(
     val host: String = SpatialSettingsStore.DEFAULT_SERVER_HOST,

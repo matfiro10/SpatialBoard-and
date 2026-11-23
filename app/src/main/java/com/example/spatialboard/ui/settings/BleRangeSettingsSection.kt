@@ -1,4 +1,4 @@
-package com.example.spatialboard.ui.overlays
+package com.example.spatialboard.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement

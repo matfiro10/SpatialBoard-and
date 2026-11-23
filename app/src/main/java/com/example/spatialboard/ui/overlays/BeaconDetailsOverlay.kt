@@ -37,6 +37,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
 import com.example.spatialboard.R
+import com.example.spatialboard.model.BeaconItem
+import com.example.spatialboard.ui.components.rememberOverlayContentMaxHeight
 
 @Composable
 fun BeaconDetailsOverlayContent(

@@ -1,4 +1,4 @@
-package com.example.spatialboard.ui
+package com.example.spatialboard.ui.components
 
 import android.content.res.Configuration
 import androidx.annotation.StringRes

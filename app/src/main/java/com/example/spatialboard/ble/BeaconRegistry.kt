@@ -1,6 +1,6 @@
 package com.example.spatialboard.ble
 
-import com.example.spatialboard.ui.overlays.BeaconItem
+import com.example.spatialboard.model.BeaconItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow

@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -23,8 +22,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.AddPhotoAlternate
-import androidx.compose.material.icons.rounded.BluetoothSearching
 import androidx.compose.material.icons.rounded.DeleteOutline
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Schedule
@@ -56,9 +55,10 @@ import coil3.request.ImageRequest
 import coil3.request.crossfade
 import com.example.spatialboard.R
 import com.example.spatialboard.ble.DetectedBeacon
-import com.example.spatialboard.ui.createSpatialImageLoader
+import com.example.spatialboard.model.BoardItem
+import com.example.spatialboard.ui.components.createSpatialImageLoader
+import com.example.spatialboard.ui.components.rememberOverlayContentMaxHeight
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun BoardDetailsOverlayContent(
     board: BoardItem,
@@ -225,7 +225,7 @@ fun BoardDetailsOverlayContent(
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Icon(
-                                    imageVector = Icons.Rounded.BluetoothSearching,
+                                    imageVector = Icons.AutoMirrored.Rounded.BluetoothSearching,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.primary,
                                     modifier = Modifier.size(16.dp)
@@ -335,7 +335,7 @@ fun BoardDetailsOverlayContent(
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Rounded.BluetoothSearching,
+                                imageVector = Icons.AutoMirrored.Rounded.BluetoothSearching,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
                                 modifier = Modifier.size(14.dp)

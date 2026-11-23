@@ -3,7 +3,6 @@ package com.example.spatialboard.camera
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,10 +33,9 @@ import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.allowHardware
-import com.example.spatialboard.ui.createSpatialImageLoader
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BoardItem
+import com.example.spatialboard.ui.components.createSpatialImageLoader
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ArBoardCard(
     board: BoardItem,

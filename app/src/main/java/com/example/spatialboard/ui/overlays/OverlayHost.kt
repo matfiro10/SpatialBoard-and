@@ -35,6 +35,11 @@ import com.example.spatialboard.permissions.PermissionWindow
 import com.example.spatialboard.ui.BoardDetailState
 import com.example.spatialboard.ui.SpatialBoardUiState
 import com.example.spatialboard.ui.SpatialBoardViewModel
+import com.example.spatialboard.ui.components.ActiveOverlay
+import com.example.spatialboard.ui.components.OverlayWindow
+import com.example.spatialboard.ui.components.rememberOverlayContentMaxHeight
+import com.example.spatialboard.ui.settings.BleRangeSettingsSection
+import com.example.spatialboard.ui.settings.ServerSettingsSection
 
 @Composable
 fun OverlayHost(
@@ -76,7 +81,8 @@ fun OverlayHost(
                 ) {
                     when (overlay.titleResId) {
                         R.string.nav_boards -> {
-                            val boards = spatialViewModel.boardsPagingFlow.collectAsLazyPagingItems()
+                            val boards =
+                                spatialViewModel.boardsPagingFlow.collectAsLazyPagingItems()
                             BoardsOverlayContent(
                                 boards = boards,
                                 onBoardClick = { board ->
@@ -84,6 +90,7 @@ fun OverlayHost(
                                 }
                             )
                         }
+
                         R.string.nav_beacons -> {
                             BeaconsOverlayContent(
                                 beacons = uiState.beacons,
@@ -92,6 +99,7 @@ fun OverlayHost(
                                 }
                             )
                         }
+
                         R.string.nav_add -> {
                             CreateBoardOverlayContent(
                                 availableBeacons = uiState.beacons,
@@ -102,6 +110,7 @@ fun OverlayHost(
                                 }
                             )
                         }
+
                         else -> {
                             SettingsOverlayContent(
                                 uiState = uiState,
@@ -138,6 +147,7 @@ fun OverlayHost(
                                 CircularProgressIndicator(modifier = Modifier.size(28.dp))
                             }
                         }
+
                         is BoardDetailState.Ready -> {
                             BoardDetailsOverlayContent(
                                 board = state.board,
@@ -147,6 +157,7 @@ fun OverlayHost(
                                 }
                             )
                         }
+
                         BoardDetailState.NotFound -> {
                             Text(
                                 text = stringResource(R.string.item_not_found),

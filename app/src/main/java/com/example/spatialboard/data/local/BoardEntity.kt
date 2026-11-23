@@ -2,7 +2,7 @@ package com.example.spatialboard.data.local
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BoardItem
 
 @Entity(tableName = "boards")
 data class BoardEntity(

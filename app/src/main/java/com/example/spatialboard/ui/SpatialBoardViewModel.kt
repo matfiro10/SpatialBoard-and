@@ -18,8 +18,8 @@ import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.data.SpatialSettingsStore
 import com.example.spatialboard.data.remote.RemoteSpatialRepository
 import com.example.spatialboard.data.remote.ServerSyncState
-import com.example.spatialboard.ui.overlays.BeaconItem
-import com.example.spatialboard.ui.overlays.BoardItem
+import com.example.spatialboard.model.BeaconItem
+import com.example.spatialboard.model.BoardItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -34,6 +34,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.collections.sortedWith
+import kotlin.comparisons.compareBy
 import kotlin.time.Duration.Companion.milliseconds
 
 sealed interface BoardDetailState {

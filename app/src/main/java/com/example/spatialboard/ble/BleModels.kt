@@ -1,6 +1,6 @@
 package com.example.spatialboard.ble
 
-import com.example.spatialboard.ui.overlays.BeaconItem
+import com.example.spatialboard.model.BeaconItem
 import kotlin.math.pow
 import kotlin.math.round
 

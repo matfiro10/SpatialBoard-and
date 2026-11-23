@@ -1,4 +1,4 @@
-package com.example.spatialboard.ui
+package com.example.spatialboard.ui.components
 
 import androidx.annotation.StringRes
 import androidx.compose.animation.animateColorAsState

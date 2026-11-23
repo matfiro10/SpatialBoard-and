@@ -50,6 +50,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.example.spatialboard.R
+import com.example.spatialboard.model.BeaconItem
+import com.example.spatialboard.model.BoardItem
+import com.example.spatialboard.ui.components.rememberOverlayContentMaxHeight
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale

@@ -1,4 +1,4 @@
-package com.example.spatialboard.ui
+package com.example.spatialboard.ui.components
 
 import android.content.Context
 import coil3.ImageLoader

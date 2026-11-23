@@ -37,7 +37,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.spatialboard.ble.BleBeaconScanner
 import com.example.spatialboard.camera.ArCameraView
 import com.example.spatialboard.permissions.AppPermissions
-import com.example.spatialboard.ui.overlays.ActiveOverlay
+import com.example.spatialboard.ui.components.NavigationCapsule
+import com.example.spatialboard.ui.components.ActiveOverlay
 import com.example.spatialboard.ui.overlays.OverlayHost
 import com.example.spatialboard.ui.theme.capsuleNavigation.SpatialBoardTheme
 

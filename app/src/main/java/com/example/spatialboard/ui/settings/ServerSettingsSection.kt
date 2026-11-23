@@ -1,4 +1,4 @@
-package com.example.spatialboard.ui.overlays
+package com.example.spatialboard.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
@@ -300,7 +300,7 @@ fun ServerSettingsSection(
             OutlinedButton(
                 onClick = {
                     if (isHostValid && isPortValid && hasUnsavedChanges) {
-                        onSaveEndpoint(draftHost, parsedPort ?: SpatialSettingsStore.DEFAULT_SERVER_PORT)
+                        onSaveEndpoint(draftHost, parsedPort)
                     }
                     onTestConnection()
                 },

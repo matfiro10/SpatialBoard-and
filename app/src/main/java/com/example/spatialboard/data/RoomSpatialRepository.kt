@@ -7,10 +7,10 @@ import androidx.paging.map
 import com.example.spatialboard.data.local.BoardDao
 import com.example.spatialboard.data.local.toDomain
 import com.example.spatialboard.data.local.toEntity
-import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
+import com.example.spatialboard.model.BoardItem
 
 class RoomSpatialRepository(
     private val boardDao: BoardDao

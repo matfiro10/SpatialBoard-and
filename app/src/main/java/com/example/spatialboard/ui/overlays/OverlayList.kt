@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import androidx.paging.LoadState
 import androidx.paging.compose.LazyPagingItems
 import androidx.paging.compose.itemKey
+import com.example.spatialboard.ui.components.rememberOverlayContentMaxHeight
 
 @Composable
 fun <T> OverlayList(
