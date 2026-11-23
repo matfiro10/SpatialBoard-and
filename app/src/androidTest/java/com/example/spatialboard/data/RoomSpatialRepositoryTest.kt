@@ -84,7 +84,7 @@ class RoomSpatialRepositoryTest {
         repository.upsertBoard(boardWithBeacon)
         repository.upsertBoard(boardWithoutBeacon)
         repository.upsertBoard(boardOtherBeacon)
-git
+
         val visibleBoards = repository.observeBoardsForAr(listOf("beacon-1")).first()
         val visibleIds = visibleBoards.map { it.id }.toSet()
 
