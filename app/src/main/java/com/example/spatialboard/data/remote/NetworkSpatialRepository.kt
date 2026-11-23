@@ -7,7 +7,6 @@ import androidx.paging.PagingData
 import com.example.spatialboard.R
 import com.example.spatialboard.ble.DetectedBeacon
 import com.example.spatialboard.data.SpatialRepository
-import com.example.spatialboard.ui.overlays.BeaconItem
 import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
@@ -36,7 +35,6 @@ class NetworkSpatialRepository(
     private val localTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
     private val boardsFlow = MutableStateFlow<List<BoardItem>>(emptyList())
-    private val beaconsFlow = MutableStateFlow<List<BeaconItem>>(emptyList())
 
     private val _syncState = MutableStateFlow<ServerSyncState>(ServerSyncState.Idle)
     val syncState: StateFlow<ServerSyncState> = _syncState.asStateFlow()
@@ -59,13 +57,6 @@ class NetworkSpatialRepository(
             .map { list -> list.find { it.id == boardId } }
             .distinctUntilChanged()
 
-    override fun observeBeacons(): Flow<List<BeaconItem>> = beaconsFlow.asStateFlow()
-
-    override fun observeBeaconById(beaconId: String): Flow<BeaconItem?> =
-        beaconsFlow
-            .map { list -> list.find { it.id == beaconId } }
-            .distinctUntilChanged()
-
     override fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>> {
         val idSet = beaconIds.toSet()
         return boardsFlow.map { list ->
@@ -83,24 +74,6 @@ class NetworkSpatialRepository(
             .onFailure { err ->
                 _syncState.value = ServerSyncState.Error(
                     messageResId = R.string.server_error_connection,
-                    detail = err.message
-                )
-            }
-    }
-
-    suspend fun seedTestData(): Result<String> {
-        _syncState.value = ServerSyncState.Syncing
-        return apiClient.seedTestNotes()
-            .map { response ->
-                refreshLastBeacons()
-                response.message
-            }
-            .onSuccess { msg ->
-                _syncState.value = ServerSyncState.Connected(serverMessage = msg)
-            }
-            .onFailure { err ->
-                _syncState.value = ServerSyncState.Error(
-                    messageResId = R.string.server_error_seed,
                     detail = err.message
                 )
             }
@@ -256,34 +229,6 @@ class NetworkSpatialRepository(
                     detail = err.message
                 )
             }
-    }
-
-    override suspend fun upsertBeacons(scannedBeacons: List<BeaconItem>) {
-        if (scannedBeacons.isEmpty()) return
-        beaconsFlow.update { currentList ->
-            val merged = currentList.associateByTo(LinkedHashMap()) { it.id }
-            scannedBeacons.forEach { incoming ->
-                merged[incoming.id] = incoming.copy(isInRange = true)
-            }
-            merged.values.toList()
-        }
-    }
-
-    override suspend fun pruneStaleBeacons(
-        nowEpochMillis: Long,
-        outOfRangeThresholdMillis: Long,
-        evictThresholdMillis: Long
-    ) {
-        beaconsFlow.update { currentList ->
-            currentList.mapNotNull { beacon ->
-                val ageMillis = nowEpochMillis - beacon.lastSeenEpochMillis
-                when {
-                    ageMillis > evictThresholdMillis -> null
-                    ageMillis > outOfRangeThresholdMillis -> beacon.copy(isInRange = false)
-                    else -> beacon
-                }
-            }
-        }
     }
 
     private fun RemoteNoteDto.toBoardItem(): BoardItem {

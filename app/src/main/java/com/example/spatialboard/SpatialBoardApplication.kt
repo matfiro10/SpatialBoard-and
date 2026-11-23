@@ -1,6 +1,7 @@
 package com.example.spatialboard
 
 import android.app.Application
+import com.example.spatialboard.ble.BeaconRegistry
 import com.example.spatialboard.data.RoomSpatialRepository
 import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.data.SpatialSettingsStore
@@ -11,6 +12,10 @@ import com.example.spatialboard.data.remote.SpatialBoardApiClient
 class SpatialBoardApplication : Application() {
     val database: SpatialDatabase by lazy {
         SpatialDatabase.getInstance(this)
+    }
+
+    val beaconRegistry: BeaconRegistry by lazy {
+        BeaconRegistry()
     }
 
     val settingsStore: SpatialSettingsStore by lazy {

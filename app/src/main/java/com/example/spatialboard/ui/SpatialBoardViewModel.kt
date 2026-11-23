@@ -9,6 +9,7 @@ import androidx.paging.PagingData
 import androidx.paging.cachedIn
 import com.example.spatialboard.SpatialBoardApplication
 import com.example.spatialboard.ble.BeaconProximityStabilizer
+import com.example.spatialboard.ble.BeaconRegistry
 import com.example.spatialboard.ble.DetectedBeacon
 import com.example.spatialboard.ble.toBeaconItem
 import com.example.spatialboard.data.DataSourceMode
@@ -53,6 +54,7 @@ private data class SettingsSnapshot(
 class SpatialBoardViewModel(
     private val localRepository: SpatialRepository = InMemorySpatialRepository(),
     private val serverRepository: SpatialRepository = InMemorySpatialRepository(),
+    private val beaconRegistry: BeaconRegistry = BeaconRegistry(),
     private val settingsStore: SpatialSettingsStore? = null,
     private val beaconStabilizer: BeaconProximityStabilizer = BeaconProximityStabilizer()
 ) : ViewModel() {
@@ -91,7 +93,7 @@ class SpatialBoardViewModel(
     }
 
     private val beaconsFlow: Flow<List<BeaconItem>> = combine(
-        localRepository.observeBeacons(),
+        beaconRegistry.beacons,
         activeSourceBoards
     ) { detectedBeacons, boards ->
         val countsByBeaconId = boards
@@ -168,15 +170,15 @@ class SpatialBoardViewModel(
             uiState.map { it.activeBeacons }
                 .distinctUntilChanged()
                 .collect { stabilized ->
-                    localRepository.upsertBeacons(stabilized.map { it.toBeaconItem() })
-                    localRepository.pruneStaleBeacons()
+                    beaconRegistry.upsert(stabilized.map { it.toBeaconItem() })
+                    beaconRegistry.pruneStale()
                 }
         }
 
         viewModelScope.launch {
             while (isActive) {
                 delay(2_000L.milliseconds)
-                localRepository.pruneStaleBeacons()
+                beaconRegistry.pruneStale()
             }
         }
 
@@ -230,9 +232,7 @@ class SpatialBoardViewModel(
     }
 
     fun onBeaconsScanned(beacons: List<BeaconItem>) {
-        viewModelScope.launch {
-            localRepository.upsertBeacons(beacons)
-        }
+        beaconRegistry.upsert(beacons)
     }
 
     fun clearDetectedBeacons() {
@@ -258,7 +258,7 @@ class SpatialBoardViewModel(
 
     fun observeBeacon(beaconId: String): Flow<BeaconItem?> {
         return combine(
-            localRepository.observeBeaconById(beaconId),
+            beaconRegistry.observeBeaconById(beaconId),
             activeSourceBoards
         ) { beacon, boards ->
             beacon?.copy(
@@ -286,10 +286,12 @@ class SpatialBoardViewModel(
                         as? SpatialBoardApplication
                 val localRepository = app?.repository ?: InMemorySpatialRepository()
                 val serverRepository = app?.networkRepository ?: InMemorySpatialRepository()
+                val beaconRegistry = app?.beaconRegistry ?: BeaconRegistry()
                 val settingsStore = app?.settingsStore
                 SpatialBoardViewModel(
                     localRepository = localRepository,
                     serverRepository = serverRepository,
+                    beaconRegistry = beaconRegistry,
                     settingsStore = settingsStore
                 )
             }

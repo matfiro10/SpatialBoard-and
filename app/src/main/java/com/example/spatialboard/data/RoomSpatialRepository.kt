@@ -7,20 +7,14 @@ import androidx.paging.map
 import com.example.spatialboard.data.local.BoardDao
 import com.example.spatialboard.data.local.toDomain
 import com.example.spatialboard.data.local.toEntity
-import com.example.spatialboard.ui.overlays.BeaconItem
 import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 
 class RoomSpatialRepository(
     private val boardDao: BoardDao
 ) : SpatialRepository {
-
-    private val beaconsFlow = MutableStateFlow<List<BeaconItem>>(emptyList())
 
     override fun observeAllBoards(): Flow<List<BoardItem>> {
         return boardDao.observeAllBoards().map { entities ->
@@ -45,14 +39,6 @@ class RoomSpatialRepository(
     override fun observeBoardById(boardId: String): Flow<BoardItem?> {
         return boardDao.observeBoardById(boardId)
             .map { entity -> entity?.toDomain() }
-            .distinctUntilChanged()
-    }
-
-    override fun observeBeacons(): Flow<List<BeaconItem>> = beaconsFlow.asStateFlow()
-
-    override fun observeBeaconById(beaconId: String): Flow<BeaconItem?> {
-        return beaconsFlow
-            .map { list -> list.find { it.id == beaconId } }
             .distinctUntilChanged()
     }
 
@@ -83,33 +69,5 @@ class RoomSpatialRepository(
 
     override suspend fun deleteBoard(boardId: String) {
         boardDao.deleteBoardById(boardId)
-    }
-
-    override suspend fun upsertBeacons(scannedBeacons: List<BeaconItem>) {
-        if (scannedBeacons.isEmpty()) return
-        beaconsFlow.update { currentList ->
-            val merged = currentList.associateByTo(LinkedHashMap()) { it.id }
-            scannedBeacons.forEach { incoming ->
-                merged[incoming.id] = incoming.copy(isInRange = true)
-            }
-            merged.values.toList()
-        }
-    }
-
-    override suspend fun pruneStaleBeacons(
-        nowEpochMillis: Long,
-        outOfRangeThresholdMillis: Long,
-        evictThresholdMillis: Long
-    ) {
-        beaconsFlow.update { currentList ->
-            currentList.mapNotNull { beacon ->
-                val ageMillis = nowEpochMillis - beacon.lastSeenEpochMillis
-                when {
-                    ageMillis > evictThresholdMillis -> null
-                    ageMillis > outOfRangeThresholdMillis -> beacon.copy(isInRange = false)
-                    else -> beacon
-                }
-            }
-        }
     }
 }
