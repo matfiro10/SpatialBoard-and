@@ -16,7 +16,7 @@ import com.example.spatialboard.data.DataSourceMode
 import com.example.spatialboard.data.InMemorySpatialRepository
 import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.data.SpatialSettingsStore
-import com.example.spatialboard.data.remote.NetworkSpatialRepository
+import com.example.spatialboard.data.remote.RemoteSpatialRepository
 import com.example.spatialboard.data.remote.ServerSyncState
 import com.example.spatialboard.ui.overlays.BeaconItem
 import com.example.spatialboard.ui.overlays.BoardItem
@@ -26,10 +26,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.isActive
@@ -42,47 +42,37 @@ sealed interface BoardDetailState {
     data object NotFound : BoardDetailState
 }
 
-private data class SettingsSnapshot(
-    val mode: DataSourceMode,
-    val host: String,
-    val port: Int,
-    val minRssi: Int,
-    val syncState: ServerSyncState
-)
-
 @OptIn(ExperimentalCoroutinesApi::class)
 class SpatialBoardViewModel(
     private val localRepository: SpatialRepository = InMemorySpatialRepository(),
-    private val serverRepository: SpatialRepository = InMemorySpatialRepository(),
+    private val serverRepository: RemoteSpatialRepository? = null,
     private val beaconRegistry: BeaconRegistry = BeaconRegistry(),
     private val settingsStore: SpatialSettingsStore? = null,
     private val beaconStabilizer: BeaconProximityStabilizer = BeaconProximityStabilizer()
 ) : ViewModel() {
 
-    private val dataSourceModeFlow: StateFlow<DataSourceMode> = settingsStore?.dataSourceMode
-        ?: MutableStateFlow(DataSourceMode.LOCAL).asStateFlow()
+    private val serverConfigFlow: Flow<ServerConfig> = combine(
+        settingsStore?.serverConfig ?: flowOf(ServerConfig()),
+        serverRepository?.syncState ?: flowOf(ServerSyncState.Idle)
+    ) { config, syncState ->
+        config.copy(syncState = syncState)
+    }
 
-    private val serverHostFlow: StateFlow<String> = settingsStore?.serverHost
-        ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_SERVER_HOST).asStateFlow()
-
-    private val serverPortFlow: StateFlow<Int> = settingsStore?.serverPort
-        ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_SERVER_PORT).asStateFlow()
-
-    private val minRssiThresholdFlow: StateFlow<Int> = settingsStore?.minRssiThreshold
-        ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_MIN_RSSI).asStateFlow()
-
-    private val serverSyncStateFlow: StateFlow<ServerSyncState> =
-        (serverRepository as? NetworkSpatialRepository)?.syncState
-            ?: MutableStateFlow<ServerSyncState>(ServerSyncState.Idle).asStateFlow()
+    private val minRssiThresholdFlow: Flow<Int> =
+        settingsStore?.minRssiThreshold ?: flowOf(SpatialSettingsStore.DEFAULT_MIN_RSSI)
 
     private val _rawDetectedBeacons = MutableStateFlow<List<DetectedBeacon>>(emptyList())
     private val _pendingArBoard = MutableStateFlow<BoardItem?>(null)
 
-    val boardsPagingFlow: Flow<PagingData<BoardItem>> = dataSourceModeFlow
+    val boardsPagingFlow: Flow<PagingData<BoardItem>> = serverConfigFlow
+        .map { it.mode }
+        .distinctUntilChanged()
         .flatMapLatest { mode -> repositoryFor(mode).observeBoardsPaged() }
         .cachedIn(viewModelScope)
 
-    private val activeSourceBoards: Flow<List<BoardItem>> = dataSourceModeFlow
+    private val activeSourceBoards: Flow<List<BoardItem>> = serverConfigFlow
+        .map { it.mode }
+        .distinctUntilChanged()
         .flatMapLatest { mode -> repositoryFor(mode).observeAllBoards() }
 
     private val activeBeaconsFlow: Flow<List<DetectedBeacon>> = combine(
@@ -112,7 +102,7 @@ class SpatialBoardViewModel(
             activeBeaconsFlow
                 .map { list -> list.map { it.id }.distinct().sorted() }
                 .distinctUntilChanged(),
-            dataSourceModeFlow
+            serverConfigFlow.map { it.mode }.distinctUntilChanged()
         ) { activeIds, mode ->
             activeIds to mode
         }.flatMapLatest { (activeIds, mode) ->
@@ -131,29 +121,21 @@ class SpatialBoardViewModel(
         )
     }
 
-    private val settingsSnapshotFlow: Flow<SettingsSnapshot> = combine(
-        dataSourceModeFlow,
-        serverHostFlow,
-        serverPortFlow,
-        minRssiThresholdFlow,
-        serverSyncStateFlow
-    ) { mode, host, port, minRssi, syncState ->
-        SettingsSnapshot(mode, host, port, minRssi, syncState)
-    }
-
-    val uiState: StateFlow<SpatialBoardUiState> = combine(
-        settingsSnapshotFlow,
-        beaconsFlow,
-        activeBeaconsFlow,
+    private val arStateFlow: Flow<Pair<List<BoardItem>, BoardItem?>> = combine(
         availableArBoardsFlow,
         _pendingArBoard
-    ) { settings, beacons, activeBeacons, arBoards, pendingBoard ->
+    ) { available, pending -> available to pending }
+
+    val uiState: StateFlow<SpatialBoardUiState> = combine(
+        serverConfigFlow,
+        minRssiThresholdFlow,
+        beaconsFlow,
+        activeBeaconsFlow,
+        arStateFlow
+    ) { serverConfig, minRssi, beacons, activeBeacons, (arBoards, pendingBoard) ->
         SpatialBoardUiState(
-            dataSourceMode = settings.mode,
-            serverHost = settings.host,
-            serverPort = settings.port,
-            minRssiThreshold = settings.minRssi,
-            serverSyncState = settings.syncState,
+            serverConfig = serverConfig,
+            minRssiThreshold = minRssi,
             beacons = beacons,
             activeBeacons = activeBeacons,
             availableArBoards = arBoards,
@@ -184,17 +166,15 @@ class SpatialBoardViewModel(
 
         viewModelScope.launch {
             combine(
-                dataSourceModeFlow,
-                serverHostFlow,
-                serverPortFlow,
+                serverConfigFlow.map { it.mode to (it.host to it.port) }.distinctUntilChanged(),
                 uiState.map { it.activeBeacons }.distinctUntilChanged { old, new ->
                     old.map { it.id }.toSet() == new.map { it.id }.toSet()
                 }
-            ) { mode, _, _, beacons ->
+            ) { (mode, _), beacons ->
                 mode to beacons
             }.collect { (mode, beacons) ->
                 if (mode == DataSourceMode.SERVER) {
-                    (serverRepository as? NetworkSpatialRepository)?.refreshForBeacons(beacons)
+                    serverRepository?.refreshForBeacons(beacons)
                 }
             }
         }
@@ -202,7 +182,7 @@ class SpatialBoardViewModel(
 
     private fun repositoryFor(mode: DataSourceMode): SpatialRepository = when (mode) {
         DataSourceMode.LOCAL -> localRepository
-        DataSourceMode.SERVER -> serverRepository
+        DataSourceMode.SERVER -> serverRepository ?: localRepository
     }
 
     private fun activeRepository(): SpatialRepository = repositoryFor(uiState.value.dataSourceMode)
@@ -219,7 +199,7 @@ class SpatialBoardViewModel(
 
     fun testServerConnection() {
         viewModelScope.launch {
-            (serverRepository as? NetworkSpatialRepository)?.testConnection()
+            serverRepository?.testConnection()
         }
     }
 
@@ -245,7 +225,7 @@ class SpatialBoardViewModel(
     }
 
     fun observeBoardDetail(boardId: String): Flow<BoardDetailState> {
-        return dataSourceModeFlow.flatMapLatest { mode ->
+        return serverConfigFlow.map { it.mode }.distinctUntilChanged().flatMapLatest { mode ->
             repositoryFor(mode).observeBoardById(boardId).map { board ->
                 if (board != null) {
                     BoardDetailState.Ready(board)
@@ -285,7 +265,7 @@ class SpatialBoardViewModel(
                 val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
                         as? SpatialBoardApplication
                 val localRepository = app?.repository ?: InMemorySpatialRepository()
-                val serverRepository = app?.networkRepository ?: InMemorySpatialRepository()
+                val serverRepository = app?.networkRepository
                 val beaconRegistry = app?.beaconRegistry ?: BeaconRegistry()
                 val settingsStore = app?.settingsStore
                 SpatialBoardViewModel(

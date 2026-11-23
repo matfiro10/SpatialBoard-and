@@ -52,21 +52,6 @@ class RoomSpatialRepository(
         boardDao.upsertBoard(board.toEntity())
     }
 
-    override suspend fun upsertBoards(boards: List<BoardItem>) {
-        val baseTime = System.currentTimeMillis()
-        val entities = boards.mapIndexed { index, board ->
-            board.toEntity(updatedAtEpoch = baseTime - index)
-        }
-        boardDao.upsertBoards(entities)
-    }
-
-    override suspend fun replaceBoards(boards: List<BoardItem>) {
-        boardDao.deleteAllBoards()
-        if (boards.isNotEmpty()) {
-            upsertBoards(boards)
-        }
-    }
-
     override suspend fun deleteBoard(boardId: String) {
         boardDao.deleteBoardById(boardId)
     }

@@ -43,17 +43,15 @@ class InMemorySpatialRepository : SpatialRepository {
         }
     }
 
-    override suspend fun upsertBoards(boards: List<BoardItem>) {
-        boards.forEach { upsertBoard(it) }
-    }
-
-    override suspend fun replaceBoards(boards: List<BoardItem>) {
-        boardsFlow.value = boards
-    }
-
     override suspend fun deleteBoard(boardId: String) {
         boardsFlow.update { currentList ->
             currentList.filterNot { it.id == boardId }
         }
     }
+
+    fun setBoards(boards: List<BoardItem>) {
+        boardsFlow.value = boards
+    }
+
+    fun getCurrentBoards(): List<BoardItem> = boardsFlow.value
 }

@@ -61,15 +61,15 @@ class SpatialBoardApiClient(
         .build()
 
     private fun baseUrlBuilder(): HttpUrl.Builder {
-        val rawHost = settingsStore.serverHost.value.trim()
+        val config = settingsStore.serverConfig.value
+        val rawHost = config.host.trim()
             .removePrefix("http://")
             .removePrefix("https://")
             .substringBefore("/")
             .substringBefore(":")
             .ifBlank { SpatialSettingsStore.DEFAULT_SERVER_HOST }
 
-        val port = settingsStore.serverPort.value
-            .coerceIn(SpatialSettingsStore.MIN_PORT, SpatialSettingsStore.MAX_PORT)
+        val port = config.port.coerceIn(SpatialSettingsStore.MIN_PORT, SpatialSettingsStore.MAX_PORT)
 
         return HttpUrl.Builder()
             .scheme("http")
@@ -171,19 +171,6 @@ class SpatialBoardApiClient(
         val request = Request.Builder()
             .url(url)
             .delete()
-            .build()
-
-        return executeJsonRequest(request)
-    }
-
-    suspend fun seedTestNotes(): Result<SeedTestResponse> {
-        val url = baseUrlBuilder()
-            .addPathSegments("api/notes/seed-test")
-            .build()
-
-        val request = Request.Builder()
-            .url(url)
-            .post(ByteArray(0).toRequestBody(null))
             .build()
 
         return executeJsonRequest(request)

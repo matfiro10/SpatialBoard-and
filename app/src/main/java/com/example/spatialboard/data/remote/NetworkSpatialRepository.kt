@@ -3,22 +3,18 @@ package com.example.spatialboard.data.remote
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
-import androidx.paging.PagingData
 import com.example.spatialboard.R
 import com.example.spatialboard.ble.DetectedBeacon
+import com.example.spatialboard.data.InMemorySpatialRepository
 import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
-import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.withContext
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -28,16 +24,15 @@ import java.time.format.DateTimeFormatter
 
 class NetworkSpatialRepository(
     context: Context,
-    private val apiClient: SpatialBoardApiClient
-) : SpatialRepository {
+    private val apiClient: SpatialBoardApiClient,
+    private val localCache: InMemorySpatialRepository = InMemorySpatialRepository()
+) : RemoteSpatialRepository, SpatialRepository by localCache {
 
     private val appContext = context.applicationContext
     private val localTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
-    private val boardsFlow = MutableStateFlow<List<BoardItem>>(emptyList())
-
     private val _syncState = MutableStateFlow<ServerSyncState>(ServerSyncState.Idle)
-    val syncState: StateFlow<ServerSyncState> = _syncState.asStateFlow()
+    override val syncState: StateFlow<ServerSyncState> = _syncState.asStateFlow()
 
     private var lastSyncedBeacons: List<BeaconKey> = emptyList()
 
@@ -47,24 +42,7 @@ class NetworkSpatialRepository(
         val minor: Int
     )
 
-    override fun observeAllBoards(): Flow<List<BoardItem>> = boardsFlow.asStateFlow()
-
-    override fun observeBoardsPaged(): Flow<PagingData<BoardItem>> =
-        boardsFlow.map { PagingData.from(it) }
-
-    override fun observeBoardById(boardId: String): Flow<BoardItem?> =
-        boardsFlow
-            .map { list -> list.find { it.id == boardId } }
-            .distinctUntilChanged()
-
-    override fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>> {
-        val idSet = beaconIds.toSet()
-        return boardsFlow.map { list ->
-            list.filter { it.beaconId == null || it.beaconId in idSet }
-        }
-    }
-
-    suspend fun testConnection(): Result<String> {
+    override suspend fun testConnection(): Result<String> {
         _syncState.value = ServerSyncState.Syncing
         return apiClient.checkStatus()
             .map { status -> status.message }
@@ -79,7 +57,7 @@ class NetworkSpatialRepository(
             }
     }
 
-    suspend fun refreshForBeacons(detectedBeacons: List<DetectedBeacon>) {
+    override suspend fun refreshForBeacons(detectedBeacons: List<DetectedBeacon>) {
         val keys = detectedBeacons
             .map { BeaconKey(it.uuid, it.major, it.minor) }
             .distinct()
@@ -87,7 +65,7 @@ class NetworkSpatialRepository(
         lastSyncedBeacons = keys
 
         if (keys.isEmpty()) {
-            boardsFlow.value = emptyList()
+            localCache.setBoards(emptyList())
             return
         }
 
@@ -114,7 +92,7 @@ class NetworkSpatialRepository(
                 detail = firstError.message
             )
         } else {
-            boardsFlow.value = fetchedNotes
+            localCache.setBoards(fetchedNotes)
             _syncState.value = ServerSyncState.Connected(
                 messageResId = R.string.server_status_synced_count,
                 formatArg = fetchedNotes.size
@@ -136,11 +114,11 @@ class NetworkSpatialRepository(
             .flatten()
             .distinctBy { it.id }
             .map { it.toBoardItem() }
-        boardsFlow.value = fetchedNotes
+        localCache.setBoards(fetchedNotes)
     }
 
     override suspend fun upsertBoard(board: BoardItem) {
-        val isExistingServerNote = boardsFlow.value.any { it.id == board.id }
+        val isExistingServerNote = localCache.getCurrentBoards().any { it.id == board.id }
         val combinedText = formatTextPayload(board.title, board.content)
 
         _syncState.value = ServerSyncState.Syncing
@@ -148,9 +126,7 @@ class NetworkSpatialRepository(
         if (isExistingServerNote) {
             apiClient.updateNote(board.id, combinedText)
                 .onSuccess {
-                    boardsFlow.update { list ->
-                        list.map { if (it.id == board.id) board else it }
-                    }
+                    localCache.upsertBoard(board)
                     _syncState.value = ServerSyncState.Connected(
                         messageResId = R.string.server_status_note_updated
                     )
@@ -206,19 +182,11 @@ class NetworkSpatialRepository(
         }
     }
 
-    override suspend fun upsertBoards(boards: List<BoardItem>) {
-        boards.forEach { upsertBoard(it) }
-    }
-
-    override suspend fun replaceBoards(boards: List<BoardItem>) {
-        boardsFlow.value = boards
-    }
-
     override suspend fun deleteBoard(boardId: String) {
         _syncState.value = ServerSyncState.Syncing
         apiClient.deleteNote(boardId)
             .onSuccess {
-                boardsFlow.update { list -> list.filterNot { it.id == boardId } }
+                localCache.deleteBoard(boardId)
                 _syncState.value = ServerSyncState.Connected(
                     messageResId = R.string.server_status_note_deleted
                 )

@@ -1,9 +1,12 @@
 package com.example.spatialboard.data
 
 import android.content.Context
+import com.example.spatialboard.ui.ServerConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import androidx.core.content.edit
 
 enum class DataSourceMode {
     LOCAL,
@@ -23,46 +26,38 @@ class SpatialSettingsStore(context: Context) {
     )
     val minRssiThreshold: StateFlow<Int> = _minRssiThreshold.asStateFlow()
 
-    private val _dataSourceMode = MutableStateFlow(
-        prefs.getString(KEY_DATA_SOURCE_MODE, null)
-            ?.let { raw -> runCatching { DataSourceMode.valueOf(raw) }.getOrNull() }
-            ?: DataSourceMode.LOCAL
+    private val _serverConfig = MutableStateFlow(
+        ServerConfig(
+            host = prefs.getString(KEY_SERVER_HOST, DEFAULT_SERVER_HOST).orEmpty().ifBlank { DEFAULT_SERVER_HOST },
+            port = prefs.getInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT).coerceIn(MIN_PORT, MAX_PORT),
+            mode = prefs.getString(KEY_DATA_SOURCE_MODE, null)
+                ?.let { raw -> runCatching { DataSourceMode.valueOf(raw) }.getOrNull() }
+                ?: DataSourceMode.LOCAL
+        )
     )
-    val dataSourceMode: StateFlow<DataSourceMode> = _dataSourceMode.asStateFlow()
-
-    private val _serverHost = MutableStateFlow(
-        prefs.getString(KEY_SERVER_HOST, DEFAULT_SERVER_HOST).orEmpty()
-    )
-    val serverHost: StateFlow<String> = _serverHost.asStateFlow()
-
-    private val _serverPort = MutableStateFlow(
-        prefs.getInt(KEY_SERVER_PORT, DEFAULT_SERVER_PORT)
-            .coerceIn(MIN_PORT, MAX_PORT)
-    )
-    val serverPort: StateFlow<Int> = _serverPort.asStateFlow()
+    val serverConfig: StateFlow<ServerConfig> = _serverConfig.asStateFlow()
 
     fun setMinRssiThreshold(rssi: Int) {
         val clamped = rssi.coerceIn(MIN_RSSI_LIMIT, MAX_RSSI_LIMIT)
         if (_minRssiThreshold.value == clamped) return
         _minRssiThreshold.value = clamped
-        prefs.edit().putInt(KEY_MIN_RSSI, clamped).apply()
+        prefs.edit { putInt(KEY_MIN_RSSI, clamped) }
     }
 
     fun setDataSourceMode(mode: DataSourceMode) {
-        if (_dataSourceMode.value == mode) return
-        _dataSourceMode.value = mode
-        prefs.edit().putString(KEY_DATA_SOURCE_MODE, mode.name).apply()
+        if (_serverConfig.value.mode == mode) return
+        _serverConfig.update { it.copy(mode = mode) }
+        prefs.edit { putString(KEY_DATA_SOURCE_MODE, mode.name) }
     }
 
     fun setServerEndpoint(host: String, port: Int) {
-        val normalizedHost = host.trim()
+        val normalizedHost = host.trim().ifBlank { DEFAULT_SERVER_HOST }
         val clampedPort = port.coerceIn(MIN_PORT, MAX_PORT)
-        _serverHost.value = normalizedHost
-        _serverPort.value = clampedPort
-        prefs.edit()
-            .putString(KEY_SERVER_HOST, normalizedHost)
-            .putInt(KEY_SERVER_PORT, clampedPort)
-            .apply()
+        _serverConfig.update { it.copy(host = normalizedHost, port = clampedPort) }
+        prefs.edit {
+            putString(KEY_SERVER_HOST, normalizedHost)
+                .putInt(KEY_SERVER_PORT, clampedPort)
+        }
     }
 
     companion object {

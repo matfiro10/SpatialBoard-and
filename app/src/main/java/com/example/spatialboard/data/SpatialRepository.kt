@@ -11,7 +11,5 @@ interface SpatialRepository {
     fun observeBoardsForAr(beaconIds: List<String>): Flow<List<BoardItem>>
 
     suspend fun upsertBoard(board: BoardItem)
-    suspend fun upsertBoards(boards: List<BoardItem>)
-    suspend fun replaceBoards(boards: List<BoardItem>)
     suspend fun deleteBoard(boardId: String)
 }
