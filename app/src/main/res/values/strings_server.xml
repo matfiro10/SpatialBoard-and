@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_source_title">Źródło danych</string>
+    <string name="settings_source_badge_local">Lokalnie</string>
+    <string name="settings_source_badge_server">Serwer</string>
+    <string name="settings_source_local">Urządzenie</string>
+    <string name="settings_source_server">Serwer API</string>
+    <string name="settings_source_desc_local">Tablice są zapisywane wyłącznie w lokalnej bazie Room na telefonie.</string>
+    <string name="settings_source_desc_server">Tablice i załączniki są synchronizowane z serwerem Node.js w sieci lokalnej.</string>
+
+    <string name="settings_server_ip_label">Adres IP serwera</string>
+    <string name="settings_server_port_label">Port</string>
+    <string name="settings_server_save">Zapisz adres serwera</string>
+    <string name="settings_server_saved">Adres zapisany</string>
+    <string name="settings_server_test_connection">Testuj połączenie</string>
+    <string name="settings_server_syncing">Łączenie z serwerem…</string>
+
+    <string name="server_status_connected">Połączono z serwerem</string>
+    <string name="server_status_synced_count">Zsynchronizowano (%1$d)</string>
+    <string name="server_status_note_saved">Zapisano na serwerze</string>
+    <string name="server_status_note_updated">Zaktualizowano notatkę</string>
+    <string name="server_status_note_deleted">Usunięto z serwera</string>
+
+    <string name="server_source_label">Serwer</string>
+    <string name="server_note_default_title">Notatka #%1$d (\%2$s)</string>
+
+    <string name="server_error_connection">Brak połączenia z serwerem</string>
+    <string name="server_error_seed">Nie udało się dodać danych testowych</string>
+    <string name="server_error_sync">Błąd pobierania notatek z serwera</string>
+    <string name="server_error_beacon_required">Serwer wymaga przypisania tablicy do konkretnego beacona</string>
+    <string name="server_error_save">Błąd zapisu na serwerze</string>
+    <string name="server_error_update">Błąd aktualizacji notatki</string>
+    <string name="server_error_delete">Błąd usuwania notatki</string>
+</resources>

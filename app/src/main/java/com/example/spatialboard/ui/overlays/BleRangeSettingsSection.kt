@@ -10,13 +10,15 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.BluetoothSearching
+import androidx.compose.material.icons.automirrored.rounded.BluetoothSearching
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberSliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
@@ -40,6 +42,18 @@ fun BleRangeSettingsSection(
         BleRangePreset.WIDE -> stringResource(R.string.settings_ble_preset_wide)
     }
 
+    val sliderState = rememberSliderState(
+        value = minRssiThreshold.toFloat(),
+        trackRange = SpatialSettingsStore.MIN_RSSI_LIMIT.toFloat()..SpatialSettingsStore.MAX_RSSI_LIMIT.toFloat(),
+        steps = 8
+    )
+
+    LaunchedEffect(minRssiThreshold) {
+        if (sliderState.value.roundToInt() != minRssiThreshold) {
+            sliderState.value = minRssiThreshold.toFloat()
+        }
+    }
+
     Surface(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -59,7 +73,7 @@ fun BleRangeSettingsSection(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Icon(
-                    imageVector = Icons.Rounded.BluetoothSearching,
+                    imageVector = Icons.AutoMirrored.Rounded.BluetoothSearching,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(20.dp)
@@ -94,13 +108,14 @@ fun BleRangeSettingsSection(
             )
 
             Slider(
-                value = minRssiThreshold.toFloat(),
+                state = sliderState,
                 onValueChange = { raw ->
                     val snapped = (raw / 5f).roundToInt() * 5
-                    onThresholdChange(snapped)
+                    sliderState.value = snapped.toFloat()
+                    if (snapped != minRssiThreshold) {
+                        onThresholdChange(snapped)
+                    }
                 },
-                valueRange = SpatialSettingsStore.MIN_RSSI_LIMIT.toFloat()..SpatialSettingsStore.MAX_RSSI_LIMIT.toFloat(),
-                steps = 8,
                 modifier = Modifier.fillMaxWidth()
             )
 

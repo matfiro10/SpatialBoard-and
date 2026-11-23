@@ -25,4 +25,10 @@ interface BoardDao {
 
     @Query("DELETE FROM boards WHERE id = :boardId")
     suspend fun deleteBoardById(boardId: String)
+
+    @Query("SELECT * FROM boards ORDER BY updatedAtEpoch DESC")
+    fun observeAllBoards(): Flow<List<BoardEntity>>
+
+    @Query("DELETE FROM boards")
+    suspend fun deleteAllBoards()
 }

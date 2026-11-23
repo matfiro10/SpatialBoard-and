@@ -6,10 +6,13 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -99,10 +102,36 @@ fun OverlayHost(
                         }
                         else -> {
                             val minRssiThreshold by spatialViewModel.minRssiThreshold.collectAsStateWithLifecycle()
-                            BleRangeSettingsSection(
-                                minRssiThreshold = minRssiThreshold,
-                                onThresholdChange = spatialViewModel::setMinRssiThreshold
-                            )
+                            val dataSourceMode by spatialViewModel.dataSourceMode.collectAsStateWithLifecycle()
+                            val serverHost by spatialViewModel.serverHost.collectAsStateWithLifecycle()
+                            val serverPort by spatialViewModel.serverPort.collectAsStateWithLifecycle()
+                            val syncState by spatialViewModel.serverSyncState.collectAsStateWithLifecycle()
+                            val maxContentHeight = rememberOverlayContentMaxHeight()
+
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(max = maxContentHeight),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                item(key = "settings_server") {
+                                    ServerSettingsSection(
+                                        dataSourceMode = dataSourceMode,
+                                        serverHost = serverHost,
+                                        serverPort = serverPort,
+                                        syncState = syncState,
+                                        onModeChange = spatialViewModel::setDataSourceMode,
+                                        onSaveEndpoint = spatialViewModel::updateServerEndpoint,
+                                        onTestConnection = spatialViewModel::testServerConnection
+                                    )
+                                }
+                                item(key = "settings_ble_range") {
+                                    BleRangeSettingsSection(
+                                        minRssiThreshold = minRssiThreshold,
+                                        onThresholdChange = spatialViewModel::setMinRssiThreshold
+                                    )
+                                }
+                            }
                         }
                     }
                 }

@@ -11,9 +11,12 @@ import com.example.spatialboard.SpatialBoardApplication
 import com.example.spatialboard.ble.BeaconProximityStabilizer
 import com.example.spatialboard.ble.DetectedBeacon
 import com.example.spatialboard.ble.toBeaconItem
+import com.example.spatialboard.data.DataSourceMode
 import com.example.spatialboard.data.InMemorySpatialRepository
 import com.example.spatialboard.data.SpatialRepository
 import com.example.spatialboard.data.SpatialSettingsStore
+import com.example.spatialboard.data.remote.NetworkSpatialRepository
+import com.example.spatialboard.data.remote.ServerSyncState
 import com.example.spatialboard.ui.overlays.BeaconItem
 import com.example.spatialboard.ui.overlays.BoardItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -38,26 +41,54 @@ sealed interface BoardDetailState {
     data object NotFound : BoardDetailState
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class SpatialBoardViewModel(
-    private val repository: SpatialRepository = InMemorySpatialRepository(),
+    private val localRepository: SpatialRepository = InMemorySpatialRepository(),
+    private val serverRepository: SpatialRepository = InMemorySpatialRepository(),
     private val settingsStore: SpatialSettingsStore? = null,
     private val beaconStabilizer: BeaconProximityStabilizer = BeaconProximityStabilizer()
 ) : ViewModel() {
 
-    val boardsPagingFlow: Flow<PagingData<BoardItem>> = repository
-        .observeBoardsPaged()
-        .cachedIn(viewModelScope)
+    val dataSourceMode: StateFlow<DataSourceMode> = settingsStore?.dataSourceMode
+        ?: MutableStateFlow(DataSourceMode.LOCAL).asStateFlow()
 
-    val beacons: StateFlow<List<BeaconItem>> = repository
-        .observeBeacons()
-        .stateIn(
-            scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5_000L),
-            initialValue = emptyList()
-        )
+    val serverHost: StateFlow<String> = settingsStore?.serverHost
+        ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_SERVER_HOST).asStateFlow()
+
+    val serverPort: StateFlow<Int> = settingsStore?.serverPort
+        ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_SERVER_PORT).asStateFlow()
 
     val minRssiThreshold: StateFlow<Int> = settingsStore?.minRssiThreshold
         ?: MutableStateFlow(SpatialSettingsStore.DEFAULT_MIN_RSSI).asStateFlow()
+
+    val serverSyncState: StateFlow<ServerSyncState> =
+        (serverRepository as? NetworkSpatialRepository)?.syncState
+            ?: MutableStateFlow<ServerSyncState>(ServerSyncState.Idle).asStateFlow()
+
+    val boardsPagingFlow: Flow<PagingData<BoardItem>> = dataSourceMode
+        .flatMapLatest { mode -> repositoryFor(mode).observeBoardsPaged() }
+        .cachedIn(viewModelScope)
+
+    private val activeSourceBoards: Flow<List<BoardItem>> = dataSourceMode
+        .flatMapLatest { mode -> repositoryFor(mode).observeAllBoards() }
+
+    val beacons: StateFlow<List<BeaconItem>> = combine(
+        localRepository.observeBeacons(),
+        activeSourceBoards
+    ) { detectedBeacons, boards ->
+        val countsByBeaconId = boards
+            .mapNotNull { it.beaconId }
+            .groupingBy { it }
+            .eachCount()
+
+        detectedBeacons.map { beacon ->
+            beacon.copy(linkedBoardsCount = countsByBeaconId[beacon.id] ?: 0)
+        }
+    }.stateIn(
+        scope = viewModelScope,
+        started = SharingStarted.WhileSubscribed(5_000L),
+        initialValue = emptyList()
+    )
 
     private val _rawDetectedBeacons = MutableStateFlow<List<DetectedBeacon>>(emptyList())
 
@@ -72,15 +103,18 @@ class SpatialBoardViewModel(
         initialValue = emptyList()
     )
 
-    @OptIn(ExperimentalCoroutinesApi::class)
     val availableArBoards: StateFlow<List<BoardItem>> = combine(
         activeBeacons,
-        activeBeacons
-            .map { list -> list.map { it.id }.distinct().sorted() }
-            .distinctUntilChanged()
-            .flatMapLatest { activeIds ->
-                repository.observeBoardsForAr(activeIds)
-            }
+        combine(
+            activeBeacons
+                .map { list -> list.map { it.id }.distinct().sorted() }
+                .distinctUntilChanged(),
+            dataSourceMode
+        ) { activeIds, mode ->
+            activeIds to mode
+        }.flatMapLatest { (activeIds, mode) ->
+            repositoryFor(mode).observeBoardsForAr(activeIds)
+        }
     ) { stabilizedBeacons, boards ->
         val priorityByBeaconId = stabilizedBeacons
             .mapIndexed { index, beacon -> beacon.id to index }
@@ -104,15 +138,60 @@ class SpatialBoardViewModel(
     init {
         viewModelScope.launch {
             activeBeacons.collect { stabilized ->
-                repository.upsertBeacons(stabilized.map { it.toBeaconItem() })
-                repository.pruneStaleBeacons()
+                localRepository.upsertBeacons(stabilized.map { it.toBeaconItem() })
+                localRepository.pruneStaleBeacons()
             }
         }
         viewModelScope.launch {
             while (isActive) {
                 delay(2_000L.milliseconds)
-                repository.pruneStaleBeacons()
+                localRepository.pruneStaleBeacons()
             }
+        }
+        viewModelScope.launch {
+            combine(
+                dataSourceMode,
+                serverHost,
+                serverPort,
+                activeBeacons.distinctUntilChanged { old, new ->
+                    old.map { it.id }.toSet() == new.map { it.id }.toSet()
+                }
+            ) { mode, _, _, beacons ->
+                mode to beacons
+            }.collect { (mode, beacons) ->
+                if (mode == DataSourceMode.SERVER) {
+                    (serverRepository as? NetworkSpatialRepository)?.refreshForBeacons(beacons)
+                }
+            }
+        }
+    }
+
+    private fun repositoryFor(mode: DataSourceMode): SpatialRepository = when (mode) {
+        DataSourceMode.LOCAL -> localRepository
+        DataSourceMode.SERVER -> serverRepository
+    }
+
+    private fun activeRepository(): SpatialRepository = repositoryFor(dataSourceMode.value)
+
+    fun setDataSourceMode(mode: DataSourceMode) {
+        if (dataSourceMode.value == mode) return
+        _pendingArBoard.value = null
+        settingsStore?.setDataSourceMode(mode)
+    }
+
+    fun updateServerEndpoint(host: String, port: Int) {
+        settingsStore?.setServerEndpoint(host, port)
+    }
+
+    fun testServerConnection() {
+        viewModelScope.launch {
+            (serverRepository as? NetworkSpatialRepository)?.testConnection()
+        }
+    }
+
+    fun refreshServerData() {
+        viewModelScope.launch {
+            (serverRepository as? NetworkSpatialRepository)?.refreshForBeacons(activeBeacons.value)
         }
     }
 
@@ -124,56 +203,67 @@ class SpatialBoardViewModel(
         _rawDetectedBeacons.value = detectedBeacons
     }
 
-    fun selectBoardForAr(board: BoardItem?) {
-        _pendingArBoard.value = board
-    }
-
-    fun observeBoardDetail(boardId: String): Flow<BoardDetailState> {
-        return repository.observeBoardById(boardId).map { board ->
-            if (board != null) {
-                BoardDetailState.Ready(board)
-            } else {
-                BoardDetailState.NotFound
-            }
-        }
-    }
-
-    fun observeBeacon(beaconId: String): Flow<BeaconItem?> {
-        return repository.observeBeaconById(beaconId)
-    }
-
-    fun saveBoard(board: BoardItem) {
-        viewModelScope.launch {
-            repository.upsertBoard(board)
-        }
-    }
-
-    fun syncBoardsFromServer(boards: List<BoardItem>) {
-        viewModelScope.launch {
-            repository.upsertBoards(boards)
-        }
-    }
-
-    fun deleteBoard(boardId: String) {
-        viewModelScope.launch {
-            repository.deleteBoard(boardId)
-        }
-    }
-
     fun clearDetectedBeacons() {
         _rawDetectedBeacons.value = emptyList()
         beaconStabilizer.reset()
     }
 
+    fun selectBoardForAr(board: BoardItem?) {
+        _pendingArBoard.value = board
+    }
+
+    fun observeBoardDetail(boardId: String): Flow<BoardDetailState> {
+        return dataSourceMode.flatMapLatest { mode ->
+            repositoryFor(mode).observeBoardById(boardId).map { board ->
+                if (board != null) {
+                    BoardDetailState.Ready(board)
+                } else {
+                    BoardDetailState.NotFound
+                }
+            }
+        }
+    }
+
+    fun observeBeacon(beaconId: String): Flow<BeaconItem?> {
+        return combine(
+            localRepository.observeBeaconById(beaconId),
+            activeSourceBoards
+        ) { beacon, boards ->
+            beacon?.copy(
+                linkedBoardsCount = boards.count { it.beaconId == beacon.id }
+            )
+        }.distinctUntilChanged()
+    }
+
+    fun saveBoard(board: BoardItem) {
+        viewModelScope.launch {
+            activeRepository().upsertBoard(board)
+        }
+    }
+
+    fun syncBoardsFromServer(boards: List<BoardItem>) {
+        viewModelScope.launch {
+            serverRepository.replaceBoards(boards)
+        }
+    }
+
+    fun deleteBoard(boardId: String) {
+        viewModelScope.launch {
+            activeRepository().deleteBoard(boardId)
+        }
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
-                val application = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
-                val repository = (application as? SpatialBoardApplication)?.repository
-                    ?: InMemorySpatialRepository()
-                val settingsStore = application?.let { SpatialSettingsStore(it) }
+                val app = this[ViewModelProvider.AndroidViewModelFactory.APPLICATION_KEY]
+                        as? SpatialBoardApplication
+                val localRepository = app?.repository ?: InMemorySpatialRepository()
+                val serverRepository = app?.networkRepository ?: InMemorySpatialRepository()
+                val settingsStore = app?.settingsStore
                 SpatialBoardViewModel(
-                    repository = repository,
+                    localRepository = localRepository,
+                    serverRepository = serverRepository,
                     settingsStore = settingsStore
                 )
             }

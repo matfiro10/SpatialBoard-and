@@ -22,6 +22,12 @@ class RoomSpatialRepository(
 
     private val beaconsFlow = MutableStateFlow<List<BeaconItem>>(emptyList())
 
+    override fun observeAllBoards(): Flow<List<BoardItem>> {
+        return boardDao.observeAllBoards().map { entities ->
+            entities.map { it.toDomain() }
+        }
+    }
+
     override fun observeBoardsPaged(): Flow<PagingData<BoardItem>> {
         return Pager(
             config = PagingConfig(
@@ -66,6 +72,13 @@ class RoomSpatialRepository(
             board.toEntity(updatedAtEpoch = baseTime - index)
         }
         boardDao.upsertBoards(entities)
+    }
+
+    override suspend fun replaceBoards(boards: List<BoardItem>) {
+        boardDao.deleteAllBoards()
+        if (boards.isNotEmpty()) {
+            upsertBoards(boards)
+        }
     }
 
     override suspend fun deleteBoard(boardId: String) {
