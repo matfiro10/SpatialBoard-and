@@ -50,8 +50,7 @@ fun SpatialBoardScreen(
     val scrimInteractionSource = remember { MutableInteractionSource() }
     val isLandscape = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
 
-    val availableArBoards by spatialViewModel.availableArBoards.collectAsStateWithLifecycle()
-    val pendingArBoard by spatialViewModel.pendingArBoard.collectAsStateWithLifecycle()
+    val uiState by spatialViewModel.uiState.collectAsStateWithLifecycle()
 
     val bleScanner = remember(context) { BleBeaconScanner(context) }
     val detectedBeacons by bleScanner.beacons.collectAsStateWithLifecycle()
@@ -148,8 +147,8 @@ fun SpatialBoardScreen(
         if (hasCameraPermission) {
             ArCameraView(
                 modifier = Modifier.fillMaxSize(),
-                availableBoards = availableArBoards,
-                pendingBoard = pendingArBoard,
+                availableBoards = uiState.availableArBoards,
+                pendingBoard = uiState.pendingArBoard,
                 isOverlayOpen = activeOverlay != ActiveOverlay.None,
                 onSelectPendingBoard = { board ->
                     spatialViewModel.selectBoardForAr(board)

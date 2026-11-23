@@ -30,8 +30,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.paging.compose.collectAsLazyPagingItems
 import com.example.spatialboard.R
+import com.example.spatialboard.data.DataSourceMode
 import com.example.spatialboard.permissions.PermissionWindow
 import com.example.spatialboard.ui.BoardDetailState
+import com.example.spatialboard.ui.SpatialBoardUiState
 import com.example.spatialboard.ui.SpatialBoardViewModel
 
 @Composable
@@ -46,6 +48,8 @@ fun OverlayHost(
     modifier: Modifier = Modifier,
     spatialViewModel: SpatialBoardViewModel = viewModel(factory = SpatialBoardViewModel.Factory)
 ) {
+    val uiState by spatialViewModel.uiState.collectAsStateWithLifecycle()
+
     AnimatedContent(
         targetState = activeOverlay,
         transitionSpec = {
@@ -81,18 +85,16 @@ fun OverlayHost(
                             )
                         }
                         R.string.nav_beacons -> {
-                            val beacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
                             BeaconsOverlayContent(
-                                beacons = beacons,
+                                beacons = uiState.beacons,
                                 onBeaconClick = { beacon ->
                                     onNavigate(ActiveOverlay.BeaconDetails(beacon.id))
                                 }
                             )
                         }
                         R.string.nav_add -> {
-                            val availableBeacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
                             CreateBoardOverlayContent(
-                                availableBeacons = availableBeacons,
+                                availableBeacons = uiState.beacons,
                                 preselectedBeaconId = null,
                                 onCreateBoard = { newBoard ->
                                     spatialViewModel.saveBoard(newBoard)
@@ -101,37 +103,13 @@ fun OverlayHost(
                             )
                         }
                         else -> {
-                            val minRssiThreshold by spatialViewModel.minRssiThreshold.collectAsStateWithLifecycle()
-                            val dataSourceMode by spatialViewModel.dataSourceMode.collectAsStateWithLifecycle()
-                            val serverHost by spatialViewModel.serverHost.collectAsStateWithLifecycle()
-                            val serverPort by spatialViewModel.serverPort.collectAsStateWithLifecycle()
-                            val syncState by spatialViewModel.serverSyncState.collectAsStateWithLifecycle()
-                            val maxContentHeight = rememberOverlayContentMaxHeight()
-
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = maxContentHeight),
-                                verticalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                item(key = "settings_server") {
-                                    ServerSettingsSection(
-                                        dataSourceMode = dataSourceMode,
-                                        serverHost = serverHost,
-                                        serverPort = serverPort,
-                                        syncState = syncState,
-                                        onModeChange = spatialViewModel::setDataSourceMode,
-                                        onSaveEndpoint = spatialViewModel::updateServerEndpoint,
-                                        onTestConnection = spatialViewModel::testServerConnection
-                                    )
-                                }
-                                item(key = "settings_ble_range") {
-                                    BleRangeSettingsSection(
-                                        minRssiThreshold = minRssiThreshold,
-                                        onThresholdChange = spatialViewModel::setMinRssiThreshold
-                                    )
-                                }
-                            }
+                            SettingsOverlayContent(
+                                uiState = uiState,
+                                onModeChange = spatialViewModel::setDataSourceMode,
+                                onSaveEndpoint = spatialViewModel::updateServerEndpoint,
+                                onTestConnection = spatialViewModel::testServerConnection,
+                                onThresholdChange = spatialViewModel::setMinRssiThreshold
+                            )
                         }
                     }
                 }
@@ -140,7 +118,6 @@ fun OverlayHost(
                 val detailState by remember(overlay.boardId) {
                     spatialViewModel.observeBoardDetail(overlay.boardId)
                 }.collectAsStateWithLifecycle(initialValue = BoardDetailState.Loading)
-                val nearbyBeacons by spatialViewModel.activeBeacons.collectAsStateWithLifecycle()
 
                 val windowTitle = (detailState as? BoardDetailState.Ready)?.board?.title
                     ?: stringResource(R.string.nav_boards)
@@ -164,7 +141,7 @@ fun OverlayHost(
                         is BoardDetailState.Ready -> {
                             BoardDetailsOverlayContent(
                                 board = state.board,
-                                nearbyBeacons = nearbyBeacons,
+                                nearbyBeacons = uiState.activeBeacons,
                                 onSave = { updatedBoard ->
                                     spatialViewModel.saveBoard(updatedBoard)
                                 }
@@ -183,7 +160,7 @@ fun OverlayHost(
             }
             is ActiveOverlay.BeaconDetails -> {
                 val initialBeacon = remember(overlay.beaconId) {
-                    spatialViewModel.beacons.value.find { it.id == overlay.beaconId }
+                    uiState.beacons.find { it.id == overlay.beaconId }
                 }
                 val liveBeacon by remember(overlay.beaconId) {
                     spatialViewModel.observeBeacon(overlay.beaconId)
@@ -224,15 +201,13 @@ fun OverlayHost(
                 }
             }
             is ActiveOverlay.CreateBoard -> {
-                val availableBeacons by spatialViewModel.beacons.collectAsStateWithLifecycle()
-
                 OverlayWindow(
                     title = stringResource(R.string.create_board_window_title),
                     onBack = onBack,
                     onClose = onCloseAll
                 ) {
                     CreateBoardOverlayContent(
-                        availableBeacons = availableBeacons,
+                        availableBeacons = uiState.beacons,
                         preselectedBeaconId = overlay.preselectedBeaconId,
                         onCreateBoard = { newBoard ->
                             spatialViewModel.saveBoard(newBoard)
@@ -241,6 +216,43 @@ fun OverlayHost(
                     )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SettingsOverlayContent(
+    uiState: SpatialBoardUiState,
+    onModeChange: (DataSourceMode) -> Unit,
+    onSaveEndpoint: (String, Int) -> Unit,
+    onTestConnection: () -> Unit,
+    onThresholdChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val maxContentHeight = rememberOverlayContentMaxHeight()
+
+    LazyColumn(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = maxContentHeight),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        item(key = "settings_server") {
+            ServerSettingsSection(
+                dataSourceMode = uiState.dataSourceMode,
+                serverHost = uiState.serverHost,
+                serverPort = uiState.serverPort,
+                syncState = uiState.serverSyncState,
+                onModeChange = onModeChange,
+                onSaveEndpoint = onSaveEndpoint,
+                onTestConnection = onTestConnection
+            )
+        }
+        item(key = "settings_ble_range") {
+            BleRangeSettingsSection(
+                minRssiThreshold = uiState.minRssiThreshold,
+                onThresholdChange = onThresholdChange
+            )
         }
     }
 }

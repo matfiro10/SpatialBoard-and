@@ -22,7 +22,7 @@
     <string name="server_status_note_deleted">Usunięto z serwera</string>
 
     <string name="server_source_label">Serwer</string>
-    <string name="server_note_default_title">Notatka #%1$d (\%2$s)</string>
+    <string name="server_note_default_title">Notatka #%1$d (%2$s)</string>
 
     <string name="server_error_connection">Brak połączenia z serwerem</string>
     <string name="server_error_seed">Nie udało się dodać danych testowych</string>

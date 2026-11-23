@@ -79,7 +79,7 @@ class SpatialBoardViewModelTest {
 
         viewModel.onBeaconsScanned(listOf(beacon))
 
-        val emitted = viewModel.beacons.first { it.isNotEmpty() }
+        val emitted = viewModel.uiState.first { it.beacons.isNotEmpty() }.beacons
         assertEquals(1, emitted.size)
         assertEquals("Beacon Wejście", emitted.first().name)
     }
